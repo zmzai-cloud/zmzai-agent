@@ -34,8 +34,8 @@ export function LoginGate({ title = "登录后继续" }: { title?: string }) {
       <EmptyState
         icon={<Icon name="user" size={28} />}
         title={title}
-        description="此页面需要 zmzai cloud 账号。登录后任务、项目和成果都会在这里。"
-        action={<a href={href}><Button><Icon name="arrow-up-right" size={14} />登录 zmzai cloud</Button></a>}
+        description="此页面需要 zmzai.cloud 账号。登录后任务、项目和成果都会在这里。"
+        action={<a href={href}><Button><Icon name="arrow-up-right" size={14} />登录 zmzai.cloud</Button></a>}
       />
     </div>
   );
@@ -90,7 +90,7 @@ export function WorkbenchRail({ tasks, activeTaskId, onNew, onOpen }: { tasks: R
     </header>
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface md:flex">
       <div className="flex items-center justify-between px-4 py-4">
-        <Link href="/fw" className="flex items-center gap-2" title="zmzai cloud">
+        <Link href="/fw" className="flex items-center gap-2" title="zmzai.cloud">
           <Logo size={24} />
           <Wordmark size={15} sublabel="agent" />
         </Link>
@@ -150,7 +150,7 @@ export function WorkbenchRail({ tasks, activeTaskId, onNew, onOpen }: { tasks: R
           </DropdownMenu>
         ) : (
           <a href={process.env.NODE_ENV === "development" ? "/dev/login" : "https://auth.zmzai.cloud/login"} className="flex items-center justify-center gap-2 rounded-md border border-line bg-bg px-3 py-2 text-xs font-medium text-ink hover:bg-surface-2">
-            <Icon name="user" size={13} />登录 zmzai cloud
+            <Icon name="user" size={13} />登录 zmzai.cloud
           </a>
         )}
       </div>
