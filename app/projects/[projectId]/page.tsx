@@ -379,7 +379,7 @@ export default function ProjectDetailPage() {
         <SectionHead eyebrow="运行记录" title="最近运行" right={<Badge variant="outline" size="sm">{runs.length} 次运行</Badge>} />
         {runs.length ? <div className="flex flex-col gap-1">
           {runs.slice(0, 12).map((run) => (
-            <Link href={`/fw/t/${run.taskId}`} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface" key={run.runId}>
+            <Link href={`/runs/${run.runId}`} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface" key={run.runId}>
               <Badge variant={statusVariant(run.status)} size="sm">{statusText(run.status)}</Badge>
               <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-ink">{tasks.find((task) => task.taskId === run.taskId)?.title || "任务运行"}</strong><small className="text-xs text-ink-3">第 {run.attempt} 次尝试 · {formatDate(run.createdAt)}</small></span>
             </Link>

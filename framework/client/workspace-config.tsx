@@ -225,6 +225,8 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
       >
         <Link href="/fw" className={navItemClass(pathname === "/fw")}>任务</Link>
         <Link href="/audit" className={navItemClass(pathname === "/audit")}>运行审计</Link>
+        <Link href="/runs" className={navItemClass(pathname === "/runs" || pathname?.startsWith("/runs/"))}>运行历史</Link>
+        <Link href="/webhooks" className={navItemClass(pathname === "/webhooks")}>Webhook</Link>
       </Navbar>
       {error && <div className="workbench-alert">{error}</div>}
 
