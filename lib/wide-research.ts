@@ -34,10 +34,12 @@ const researchWorkerPermission: Ruleset = [
 
 async function waitForRun(sessionId: string, timeoutMs = 10 * 60_000) {
   const deadline = Date.now() + timeoutMs;
+  let intervalMs = 500;
   while (Date.now() < deadline) {
     const run = await RunModel.findOne({ sessionId }).sort({ createdAt: -1 }).lean();
     if (!run || ["succeeded", "failed", "cancelled"].includes(run.status)) return run;
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    intervalMs = Math.min(intervalMs * 1.5, 5_000);
   }
   return await RunModel.findOne({ sessionId }).sort({ createdAt: -1 }).lean();
 }

@@ -8,6 +8,7 @@ import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbe
 
 type Workspace = { id: string; name: string };
 type Connector = { id: string; name: string; transport: string; url: string; status: "untested" | "ready" | "error"; enabled: boolean; lastError: string | null };
+type AuditLog = { logId: string; connectorId: string; userId: string; kind: string; detail: string; createdAt: string };
 type GithubStatus = { configured: boolean; connected: boolean; connector: { id: string; status: Connector["status"]; lastError: string | null } | null };
 async function json<T>(url: string, init?: RequestInit): Promise<T> { const response = await fetch(url, { ...init, cache: "no-store" }); const body = await response.json().catch(() => null) as { error?: string } | T | null; if (!response.ok) throw new Error(body && typeof body === "object" && body !== null && "error" in body ? String(body.error) : "请求失败"); return body as T; }
 
@@ -19,7 +20,7 @@ function statusVariant(status: Connector["status"]) {
 function statusLabel(status: Connector["status"]) { return status === "ready" ? "可用" : status === "error" ? "异常" : "未测试"; }
 
 export default function ConnectorsPage() {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]); const [workspaceId, setWorkspaceId] = useState(""); const [items, setItems] = useState<Connector[]>([]); const [github, setGithub] = useState<GithubStatus | null>(null); const [name, setName] = useState(""); const [url, setUrl] = useState(""); const [transport, setTransport] = useState<"streamable-http" | "sse">("streamable-http"); const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]); const [workspaceId, setWorkspaceId] = useState(""); const [items, setItems] = useState<Connector[]>([]); const [github, setGithub] = useState<GithubStatus | null>(null); const [name, setName] = useState(""); const [url, setUrl] = useState(""); const [transport, setTransport] = useState<"streamable-http" | "sse">("streamable-http"); const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState<string | null>(null); const [auditLogs, setAuditLogs] = useState<Record<string, AuditLog[]>>({});
   const fetchPage = async (id?: string) => { const ws = await json<{ workspaces: Workspace[] }>("/api/workspaces"); const selected = id || workspaceId || ws.workspaces[0]?.id || ""; let connectors: Connector[] = []; let githubStatus: GithubStatus | null = null; if (selected) [{ connectors }, githubStatus] = await Promise.all([json<{ connectors: Connector[] }>(`/api/workspaces/${selected}/connectors`), json<GithubStatus>(`/api/connectors/github/status?workspaceId=${encodeURIComponent(selected)}`)]); return { workspaces: ws.workspaces, selected, connectors, github: githubStatus }; };
   const load = async (id?: string) => { const result = await fetchPage(id); setWorkspaces(result.workspaces); setWorkspaceId(result.selected); setItems(result.connectors); setGithub(result.github); };
   // Load the initial workspace once; workspace selection uses the explicit id path below.
@@ -30,6 +31,7 @@ export default function ConnectorsPage() {
   const test = async (id: string) => { setBusy(id); try { await json(`/api/workspaces/${workspaceId}/connectors/${id}/test`, { method: "POST" }); await load(workspaceId); } catch (cause) { setError(cause instanceof Error ? cause.message : "连接测试失败"); } finally { setBusy(null); } };
   const toggle = async (item: Connector) => { setBusy(item.id); try { const connectorIds = items.filter((candidate) => candidate.enabled !== (candidate.id === item.id)).map((candidate) => candidate.id); await json(`/api/workspaces/${workspaceId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ connectorIds }) }); await load(workspaceId); } catch (cause) { setError(cause instanceof Error ? cause.message : "更新失败"); } finally { setBusy(null); } };
   const remove = async (item: Connector) => { setBusy(item.id); try { await json(`/api/workspaces/${workspaceId}/connectors/${item.id}`, { method: "DELETE" }); await load(workspaceId); } catch (cause) { setError(cause instanceof Error ? cause.message : "撤销连接失败"); } finally { setBusy(null); } };
+  const loadAuditLogs = async (connectorId: string) => { if (auditLogs[connectorId]) return; try { const result = await json<{ logs: AuditLog[] }>(`/api/workspaces/${workspaceId}/connectors/${connectorId}/audit?limit=20`); setAuditLogs((current) => ({ ...current, [connectorId]: result.logs })); } catch (cause) { setError(cause instanceof Error ? cause.message : "无法加载审计日志"); } };
 
   const { loggedIn, loading } = useLoggedIn();
   if (!loading && !loggedIn) return <LoginGate title="登录后管理连接器" />;
@@ -93,6 +95,19 @@ export default function ConnectorsPage() {
                 </div>
                 <p className="mt-1 truncate font-mono text-xs text-ink-3">{item.url}</p>
                 {item.lastError && <p className="mt-1 text-sm text-danger">{item.lastError}</p>}
+                <details className="mt-2" onToggle={(event) => { if ((event.target as HTMLDetailsElement).open) void loadAuditLogs(item.id); }}>
+                  <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">审计日志</summary>
+                  <div className="mt-2 flex flex-col gap-1">
+                    {auditLogs[item.id]?.map((log) => (
+                      <div className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-ink-2" key={log.logId}>
+                        <Badge variant={log.kind === "created" ? "success" : log.kind === "deleted" ? "danger" : log.kind === "tested" ? "accent" : "outline"} size="sm">{log.kind}</Badge>
+                        <span className="min-w-0 flex-1 truncate">{log.detail || "—"}</span>
+                        <small className="flex-shrink-0 text-ink-3">{new Date(log.createdAt).toLocaleString("zh-CN")}</small>
+                      </div>
+                    ))}
+                    {auditLogs[item.id]?.length === 0 && <small className="text-xs text-ink-3">暂无审计记录</small>}
+                  </div>
+                </details>
               </div>
               <div className="flex flex-shrink-0 items-center gap-2">
                 <Button type="button" variant="secondary" size="sm" disabled={busy === item.id} onClick={() => void test(item.id)}><Icon name="refresh" size={13} />测试连接</Button>

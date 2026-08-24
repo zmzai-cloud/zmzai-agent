@@ -111,6 +111,7 @@ export default function AutomationsPage() {
               </div>
               <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                 <Button type="button" variant="secondary" size="sm" disabled={busy === item.automationId || item.status === "paused"} onClick={() => void run(item.automationId)}><Icon name="play" size={13} />{item.lastRunStatus === "failed" ? "重试" : "运行"}</Button>
+                <Link href={`/automations/${item.automationId}`}><Button type="button" variant="secondary" size="sm"><Icon name="edit" size={13} />编辑</Button></Link>
                 <Button type="button" variant="secondary" size="sm" disabled={busy === `secret:${item.automationId}`} onClick={() => void generateSecret(item)}><Icon name="key" size={13} />接入</Button>
                 <IconButton size="md" label={item.status === "active" ? "暂停" : "恢复"} onClick={() => void toggle(item)}><Icon name={item.status === "active" ? "pause" : "play"} size={13} /></IconButton>
                 <IconButton size="md" label="复制自动化" disabled={busy === item.automationId} onClick={() => void duplicate(item)}><Icon name="copy" size={13} /></IconButton>

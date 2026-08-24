@@ -17,7 +17,7 @@ if (!secret) {
     ["webhooks", "/api/internal/webhooks/tick"],
     ["usage", "/api/internal/usage/tick"],
   ];
-  for (const [name, path] of jobs) {
+  await Promise.all(jobs.map(async ([name, path]) => {
     try {
       const response = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
         method: "POST",
@@ -39,5 +39,5 @@ if (!secret) {
       console.error(`${name}: ${error instanceof Error ? error.message : "request failed"}`);
       process.exitCode = 1;
     }
-  }
+  }));
 }

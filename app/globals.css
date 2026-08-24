@@ -426,7 +426,16 @@ execution detail is expressed as readable progress, plan, and result blocks. */
   @keyframes stream-cursor { 50% { opacity: 0; } }
   .tool-activity, .run-note { display: inline-flex; margin: 0.5rem 0; padding: 0.3rem 0.5rem; border: 1px solid var(--color-line); color: var(--color-muted); font-family: var(--font-mono); font-size: 0.6875rem; }
   .run-note { display: block; border-color: var(--color-accent); color: var(--color-accent-strong); }
+  .run-token-note { border-color: var(--color-line); color: var(--color-muted); font-size: 0.625rem; padding: 0.2rem 0.5rem; margin-top: 0.25rem; opacity: 0.8; }
   .completed-note { border-color: var(--color-success); color: var(--color-success); }
+
+  /* Usage dashboard chart */
+  .usage-chart { display: flex; align-items: flex-end; gap: 1px; height: 48px; padding: 2px 0; }
+  .usage-chart-bar { flex: 1; min-width: 3px; max-width: 12px; display: flex; flex-direction: column-reverse; cursor: default; border-radius: 1px 1px 0 0; overflow: hidden; }
+  .usage-bar-segment { width: 100%; min-height: 0; transition: height 0.2s ease; }
+  .usage-bar-input { background: var(--color-muted); opacity: 0.5; }
+  .usage-bar-output { background: var(--color-accent); opacity: 0.7; }
+  .usage-bar-cache { background: var(--color-success); opacity: 0.5; }
 
   .prompt-composer { position: relative; z-index: 6; border-top: 1px solid var(--color-line); padding: 0.85rem 0.15rem 0.1rem; background: var(--color-bg); box-shadow: 0 -4px 16px rgba(0,0,0,0.04); }
   .composer-controls { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem; color: var(--color-muted); }

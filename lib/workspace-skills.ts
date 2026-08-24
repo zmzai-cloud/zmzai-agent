@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { importGithubSkill } from "@/lib/github-skills";
+import { WorkspaceModel } from "@/models/workspace";
 import { WorkspaceSkillModel } from "@/models/workspace-skill";
 
 export type WorkspaceSkillSummary = {
@@ -52,6 +53,38 @@ export async function addGithubWorkspaceSkill(input: { userId: string; workspace
   if (existing) return { skill: summary(existing), reused: true };
   const skill = await WorkspaceSkillModel.create({ skillId: `skl_${randomUUID()}`, userId: input.userId, workspaceId: input.workspaceId, ...imported });
   return { skill: summary(skill), reused: false };
+}
+
+/** Refresh a GitHub-sourced skill to the latest version from the source
+ *  repository. Atomically replaces the old skill record: create new →
+ *  update all workspace skillIds references → delete old. */
+export async function refreshGithubSkill(input: { userId: string; workspaceId: string; skillId: string }): Promise<{ updated: boolean; oldSha: string; newSha: string; skill: WorkspaceSkillSummary | null }> {
+  const old = await WorkspaceSkillModel.findOne({ skillId: input.skillId, workspaceId: input.workspaceId, userId: input.userId }).lean();
+  if (!old || old.repository === "zmzai/task") return { updated: false, oldSha: "", newSha: "", skill: null };
+  const imported = await importGithubSkill({ repository: old.repository, ref: old.requestedRef, path: old.path });
+  if (imported.commitSha === old.commitSha) return { updated: false, oldSha: old.commitSha, newSha: imported.commitSha, skill: null };
+  const newSkill = await WorkspaceSkillModel.create({
+    skillId: `skl_${randomUUID()}`,
+    userId: input.userId,
+    workspaceId: input.workspaceId,
+    name: imported.name,
+    description: imported.description,
+    repository: imported.repository,
+    requestedRef: imported.requestedRef,
+    commitSha: imported.commitSha,
+    path: imported.path,
+    markdown: imported.markdown,
+  });
+  // Replace old skillId with new skillId in every workspace that references it.
+  const workspaces = await WorkspaceModel.find({ userId: input.userId, skillIds: old.skillId }).select({ workspaceId: 1, skillIds: 1 }).lean();
+  for (const workspace of workspaces) {
+    await WorkspaceModel.updateOne(
+      { userId: input.userId, workspaceId: workspace.workspaceId },
+      { $set: { skillIds: workspace.skillIds.map((id: string) => id === old.skillId ? newSkill.skillId : id) } },
+    );
+  }
+  await WorkspaceSkillModel.deleteOne({ _id: old._id });
+  return { updated: true, oldSha: old.commitSha, newSha: newSkill.commitSha, skill: summary(newSkill) };
 }
 
 /** Save a successful task as a pinned local skill. Local skills use a content

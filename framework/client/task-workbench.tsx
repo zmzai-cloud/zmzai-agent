@@ -71,13 +71,53 @@ function StatusBadge({ status }: { status: StatusKind }) {
   return <Badge variant={statusVariant(status)} size="sm">{statusLabel(status as Parameters<typeof statusLabel>[0]) ?? status}</Badge>;
 }
 
+function formatTokenCount(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}k`;
+  return String(count);
+}
+
+function TokenSummary({ messages }: { messages: { info: { role: string; tokens?: { input: number; output: number; cacheRead?: number; cacheWrite?: number } } }[] }) {
+  const totals = useMemo(() => {
+    let input = 0;
+    let output = 0;
+    let cacheRead = 0;
+    for (const message of messages) {
+      if (message.info.role === "assistant" && message.info.tokens) {
+        input += message.info.tokens.input ?? 0;
+        output += message.info.tokens.output ?? 0;
+        cacheRead += message.info.tokens.cacheRead ?? 0;
+      }
+    }
+    return { input, output, cacheRead, total: input + output };
+  }, [messages]);
+  if (totals.total === 0) return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-sm border border-line bg-surface px-1.5 py-0.5 text-xs text-ink-3" title={`输入 ${formatTokenCount(totals.input)} · 输出 ${formatTokenCount(totals.output)}${totals.cacheRead ? ` · 缓存命中 ${formatTokenCount(totals.cacheRead)}` : ""}`}>
+      <Icon name="activity" size={10} />
+      {formatTokenCount(totals.total)} tokens
+    </span>
+  );
+}
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
+}
+
 function FileAttachments({ files, onRemove }: { files: File[]; onRemove: (index: number) => void }) {
   if (!files.length) return null;
-  return <div className="mt-2 flex flex-wrap gap-1.5" aria-label="待上传文件">{files.map((file, index) => <span key={`${file.name}-${file.size}-${file.lastModified}`} className="inline-flex max-w-full items-center gap-1 rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-2"><Icon name="book" size={12} /><span className="max-w-[14rem] truncate">{file.name}</span><IconButton size="sm" label={`移除 ${file.name}`} onClick={() => onRemove(index)}><Icon name="cross" size={11} /></IconButton></span>)}</div>;
+  return <div className="mt-2 flex flex-wrap gap-1.5" aria-label="待上传文件">{files.map((file, index) => {
+    const isImage = isImageFile(file);
+    return <span key={`${file.name}-${file.size}-${file.lastModified}`} className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-2">
+      {isImage ? <Icon name="image" size={12} /> : <Icon name="book" size={12} />}
+      <span className="max-w-[14rem] truncate">{file.name}</span>
+      <IconButton size="sm" label={`移除 ${file.name}`} onClick={() => onRemove(index)}><Icon name="cross" size={11} /></IconButton>
+    </span>;
+  })}</div>;
 }
 
 function FilePicker({ onFiles }: { onFiles: (files: File[]) => void }) {
-  return <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-ink-2 hover:bg-surface-2" title="添加文件"><Icon name="plus" size={12} />添加文件<input type="file" multiple accept=".txt,.md,.csv,.json,.ts,.tsx,.js,.jsx,.css,.html,.xml,.yaml,.yml" className="sr-only" onChange={(event) => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ""; }} /></label>;
+  return <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-ink-2 hover:bg-surface-2" title="添加文件或图片"><Icon name="plus" size={12} />添加文件<input type="file" multiple accept=".txt,.md,.csv,.json,.ts,.tsx,.js,.jsx,.css,.html,.xml,.yaml,.yml,.png,.jpg,.jpeg,.gif,.webp,.svg" className="sr-only" onChange={(event) => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ""; }} /></label>;
 }
 
 function CardHead({ icon, title, sub, right }: { icon: Parameters<typeof Icon>[0]["name"]; title: string; sub?: string; right?: React.ReactNode }) {
@@ -193,10 +233,13 @@ function SubagentCard({ subagents, onRetry, retryingId }: { subagents: SubagentH
   );
 }
 
-function CompletionCard({ artifacts, onFollowUp, onSaveTemplate, savingTemplate, onSaveSkill, savingSkill, canSave }: { artifacts: ArtifactCard[]; onFollowUp: () => void; onSaveTemplate: () => void; savingTemplate: boolean; onSaveSkill: () => void; savingSkill: boolean; canSave: boolean }) {
+function CompletionCard({ artifacts, onFollowUp, onSaveTemplate, savingTemplate, onSaveSkill, savingSkill, canSave, tokenTotal }: { artifacts: ArtifactCard[]; onFollowUp: () => void; onSaveTemplate: () => void; savingTemplate: boolean; onSaveSkill: () => void; savingSkill: boolean; canSave: boolean; tokenTotal?: number }) {
   return (
     <Card padding="sm" className="w-full">
-      <CardHead icon="check" title="任务已完成" sub={artifacts.length ? `${artifacts.length} 个成果已准备好` : "结果已整理到对话中"} right={<Badge variant="success" size="sm">完成</Badge>} />
+      <CardHead icon="check" title="任务已完成" sub={[
+        artifacts.length ? `${artifacts.length} 个成果已准备好` : "结果已整理到对话中",
+        tokenTotal ? `消耗 ${formatTokenCount(tokenTotal)} tokens` : "",
+      ].filter(Boolean).join(" · ")} right={<Badge variant="success" size="sm">完成</Badge>} />
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button type="button" variant="secondary" size="sm" onClick={onFollowUp}><Icon name="message" size={13} />继续修改</Button>
         {canSave && <>
@@ -222,6 +265,7 @@ function toolOutput(tool: ToolPart): string {
 function WorkspacePanel({ artifacts, edits, files, tools, preview, activeTab, onTabChange, onOpen, onClose }: { artifacts: ArtifactCard[]; edits: { path: string; revisionId: string; diff: string; at: string }[]; files: string[]; tools: ToolPart[]; preview: ArtifactCard | null; activeTab: WorkspaceTab; onTabChange: (tab: WorkspaceTab) => void; onOpen: (artifact: ArtifactCard) => void; onClose: () => void }) {
   const tabs: Array<{ value: WorkspaceTab; label: string; count: number }> = [{ value: "files", label: "文件", count: files.length }, { value: "diff", label: "改动", count: edits.length }, { value: "terminal", label: "终端", count: tools.length }, { value: "preview", label: "预览", count: preview ? 1 : 0 }, { value: "artifacts", label: "成果", count: artifacts.length }];
   const showPreview = activeTab === "preview" && preview;
+  const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
   // 同名产物只默认展示最新版本（数组靠后 = 更新），旧版本折叠进「历史版本」，
   // 避免失败尝试的残留淹没最新成果。
   const [showAllVersions, setShowAllVersions] = useState(false);
@@ -244,9 +288,20 @@ function WorkspacePanel({ artifacts, edits, files, tools, preview, activeTab, on
       </div>
       <Tabs items={tabs} value={activeTab} onValueChange={(value) => onTabChange(value as WorkspaceTab)} className="mt-2" />
       {showPreview ? <div className="mt-3 flex min-h-0 flex-1 flex-col">
-        <div className="flex items-center justify-between rounded-sm border border-line bg-surface px-3 py-2 text-xs text-ink-2"><span className="truncate">{preview.path}</span><a href={preview.downloadUrl} title="下载成果" className="text-ink-3 hover:text-ink"><Icon name="download" size={14} /></a></div>
-        <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-sm border border-line">
-          {preview.contentType.includes("presentationml.presentation") ? <PptxPreview previewUrl={preview.previewUrl ?? preview.downloadUrl.replace(/\/download$/, "/preview")} /> : preview.previewUrl ? <iframe src={preview.previewUrl} title={preview.path} sandbox="allow-scripts allow-same-origin" className="h-full w-full" /> : <div className="grid h-full place-items-center text-center text-xs text-ink-3">该成果暂不支持在线预览<br /><a href={preview.downloadUrl} className="text-ink-2 underline">下载文件</a></div>}
+        <div className="flex items-center justify-between gap-2 rounded-sm border border-line bg-surface px-3 py-2 text-xs text-ink-2">
+          <span className="min-w-0 flex-1 truncate">{preview.path}</span>
+          <div className="flex flex-shrink-0 items-center gap-1" role="group" aria-label="预览视口">
+            <Button type="button" variant={viewport === "desktop" ? "primary" : "ghost"} size="sm" onClick={() => setViewport("desktop")} title="桌面 1280×800">桌面</Button>
+            <Button type="button" variant={viewport === "mobile" ? "primary" : "ghost"} size="sm" onClick={() => setViewport("mobile")} title="移动 390×844">移动</Button>
+          </div>
+          <a href={preview.downloadUrl} title="下载成果" className="flex-shrink-0 text-ink-3 hover:text-ink"><Icon name="download" size={14} /></a>
+        </div>
+        <div className="mt-2 grid min-h-0 flex-1 place-items-center overflow-hidden rounded-sm border border-line bg-surface-2">
+          {preview.contentType.includes("presentationml.presentation")
+            ? <PptxPreview previewUrl={preview.previewUrl ?? preview.downloadUrl.replace(/\/download$/, "/preview")} />
+            : preview.previewUrl
+              ? <iframe src={preview.previewUrl} title={preview.path} sandbox="allow-scripts allow-same-origin" className={`h-full border-x border-line bg-bg transition-all ${viewport === "mobile" ? "w-[390px] max-w-full" : "w-full"}`} />
+              : <div className="grid h-full place-items-center text-center text-xs text-ink-3">该成果暂不支持在线预览<br /><a href={preview.downloadUrl} className="text-ink-2 underline">下载文件</a></div>}
         </div>
       </div> : <div className="fw-canvas-body mt-1">
         {activeTab === "files" && (files.length ? <div className="flex flex-col gap-0.5">{files.map((file) => <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink-2 hover:bg-surface" key={file}><Icon name="file" size={13} /><span className="truncate">{file}</span></div>)}</div> : <EmptyState icon={<Icon name="file" size={24} />} title="还没有文件" description="上传或生成的文件会出现在这里。" />)}
@@ -321,6 +376,9 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [savingSkill, setSavingSkill] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [preview, setPreview] = useState<ArtifactCard | null>(null);
   const [suggestions, setSuggestions] = useState<Array<{ label: string; prompt: string }>>([]);
@@ -340,6 +398,16 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
   const busy = live.status === "running" || live.status === "waiting_permission" || latestRun?.status === "running" || latestRun?.status === "waiting_approval";
   const messages = useMemo(() => groupAssistantMessages(snapshot?.messages ?? []), [snapshot?.messages]);
   const taskTools = useMemo(() => (snapshot?.messages ?? []).flatMap((entry) => entry.parts.filter((part): part is ToolPart => part.type === "tool")), [snapshot?.messages]);
+  const tokenMessages = useMemo(() => (snapshot?.messages ?? []).map((entry) => ({ info: entry.info })), [snapshot?.messages]);
+  const sessionTokenTotal = useMemo(() => {
+    let total = 0;
+    for (const message of snapshot?.messages ?? []) {
+      if (message.info.role === "assistant" && message.info.tokens) {
+        total += (message.info.tokens.input ?? 0) + (message.info.tokens.output ?? 0);
+      }
+    }
+    return total;
+  }, [snapshot?.messages]);
   const taskFiles = useMemo(() => [...new Set([...(snapshot?.messages ?? []).flatMap((entry) => entry.parts.flatMap((part) => part.type === "file" ? [part.filename] : [])), ...live.edits.map((edit) => edit.path)])], [live.edits, snapshot?.messages]);
   const qualityResult = useMemo(() => {
     for (const message of [...(snapshot?.messages ?? [])].reverse()) {
@@ -434,6 +502,8 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
     const text = prompt.trim();
     if (!text || sending || uploading) return;
     const files = selectedFiles;
+    const imageFiles = files.filter(isImageFile);
+    const textFiles = files.filter((file) => !isImageFile(file));
     setSending(true);
     setActionError(null);
     try {
@@ -454,14 +524,23 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
         router.push(`/fw/t/${result.taskId}`);
         return;
       }
+      const imagePayload = imageFiles.length
+        ? await Promise.all(imageFiles.map((file) => new Promise<{ url: string; mediaType: string }>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve({ url: String(reader.result), mediaType: file.type || "image/png" });
+            reader.onerror = () => reject(new Error(`无法读取图片 ${file.name}`));
+            reader.readAsDataURL(file);
+          })))
+        : [];
+      const promptInput = { text, ...(imagePayload.length ? { images: imagePayload } : {}) };
       if (sessionId) {
-        await uploadFiles(sessionId, files);
-        await fwApi.prompt(sessionId, { text });
+        await uploadFiles(sessionId, textFiles);
+        await fwApi.prompt(sessionId, promptInput);
       } else if (selectedWorkspace) {
         const created = await fwApi.createSession({ workspaceId: selectedWorkspace.id, model: { providerId: "relay", modelId: selectedWorkspace.defaultModel }, ...(taskId ? { taskId } : {}), ...(files.length ? {} : { prompt: text }) });
         if (files.length) {
-          await uploadFiles(created.session.id, files);
-          await fwApi.prompt(created.session.id, { text });
+          await uploadFiles(created.session.id, textFiles);
+          await fwApi.prompt(created.session.id, promptInput);
         }
         if (created.task?.taskId) router.push(`/fw/t/${created.task.taskId}`);
         else router.push(`/fw/s/${created.session.id}`);
@@ -544,6 +623,31 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
       router.push(`/fw/t/${result.task.taskId}`);
     } catch (error: unknown) { setActionError(error instanceof Error ? error.message : "创建任务分支失败"); }
   }, [router, taskId]);
+
+  const shareTask = useCallback(async () => {
+    if (!taskId || shareBusy) return;
+    setShareBusy(true);
+    setActionError(null);
+    try {
+      const result = await json<{ shareUrl: string; expiresAt: string }>(`/api/tasks/${encodeURIComponent(taskId)}/share`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) });
+      setShareUrl(result.shareUrl);
+      setShareCopied(false);
+    } catch (error: unknown) { setActionError(error instanceof Error ? error.message : "创建分享链接失败"); }
+    finally { setShareBusy(false); }
+  }, [shareBusy, taskId]);
+
+  const revokeShareLink = useCallback(async () => {
+    if (!taskId) return;
+    try {
+      await json(`/api/tasks/${encodeURIComponent(taskId)}/share`, { method: "DELETE" });
+      setShareUrl(null);
+    } catch (error: unknown) { setActionError(error instanceof Error ? error.message : "撤销分享失败"); }
+  }, [taskId]);
+
+  const copyShareUrl = useCallback(() => {
+    if (!shareUrl) return;
+    void navigator.clipboard.writeText(shareUrl).then(() => { setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); });
+  }, [shareUrl]);
 
   const saveTemplate = useCallback(async () => {
     if (!taskId || savingTemplate) return;
@@ -654,8 +758,20 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
                 </ThemeSelect>
               )}
               <StatusBadge status={live.pendingPermission ? "waiting_permission" : latestRun?.status ?? live.status} />
+              <TokenSummary messages={tokenMessages} />
               {latestRun?.attempt && latestRun.attempt > 1 && <Badge variant="outline" size="sm">第 {latestRun.attempt} 次尝试</Badge>}
               {(taskDetail?.role === "owner" || taskDetail?.role === "editor") && <Button type="button" variant="ghost" size="sm" onClick={() => void branchTask()}><Icon name="copy" size={12} />分支</Button>}
+              {(taskDetail?.role === "owner" || taskDetail?.role === "editor") && (
+                shareUrl ? (
+                  <span className="flex items-center gap-1 rounded-sm border border-line bg-surface px-2 py-1 font-mono text-[10px] text-ink-3">
+                    <span className="max-w-40 truncate">{shareUrl}</span>
+                    <button type="button" className="text-ink-2 transition-colors hover:text-accent" onClick={copyShareUrl}>{shareCopied ? "已复制" : "复制"}</button>
+                    <button type="button" className="text-danger transition-colors hover:text-danger/80" onClick={() => void revokeShareLink()}>撤销</button>
+                  </span>
+                ) : (
+                  <Button type="button" variant="ghost" size="sm" disabled={shareBusy} onClick={() => void shareTask()}><Icon name="share" size={12} />{shareBusy ? "生成中" : "分享"}</Button>
+                )
+              )}
               {latestRun?.status === "paused" && <Button type="button" variant="secondary" size="sm" onClick={() => void action("resume")}><Icon name="play" size={13} />继续</Button>}
               {latestRun?.status === "failed" && <Button type="button" variant="secondary" size="sm" onClick={() => void action("retry")}><Icon name="refresh" size={13} />重试</Button>}
               {busy && <>
@@ -675,7 +791,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
               <SubagentCard subagents={taskDetail?.subagents ?? []} onRetry={(id) => void retrySubagent(id)} retryingId={retryingSubagentId} />
               <ApprovalHistoryCard approvals={taskDetail?.approvals ?? []} grants={taskDetail?.grants ?? []} onRevoke={(id) => void revokeGrant(id)} revokingId={revokingGrantId} />
               {live.error && <div className="flex items-center gap-2 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="alert"><Icon name="warning" size={14} /><span>{live.error}</span></div>}
-              {(latestRun?.status === "succeeded" || task?.status === "succeeded") && <CompletionCard artifacts={live.artifacts} onFollowUp={() => setPrompt("请继续修改这个成果，并说明你准备调整的内容") } onSaveTemplate={() => void saveTemplate()} savingTemplate={savingTemplate} onSaveSkill={() => void saveSkill()} savingSkill={savingSkill} canSave={canEditTask} />}
+              {(latestRun?.status === "succeeded" || task?.status === "succeeded") && <CompletionCard artifacts={live.artifacts} onFollowUp={() => setPrompt("请继续修改这个成果，并说明你准备调整的内容") } onSaveTemplate={() => void saveTemplate()} savingTemplate={savingTemplate} onSaveSkill={() => void saveSkill()} savingSkill={savingSkill} canSave={canEditTask} tokenTotal={sessionTokenTotal || undefined} />}
             </div>
           </div>
 

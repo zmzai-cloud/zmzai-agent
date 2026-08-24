@@ -8,6 +8,7 @@ const projectSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 160 },
     description: { type: String, default: "", maxlength: 4_000 },
     instructions: { type: String, default: "", maxlength: 64 * 1024 },
+    connectorIds: { type: [String], default: [] },
   },
   { strict: "throw", timestamps: true },
 );

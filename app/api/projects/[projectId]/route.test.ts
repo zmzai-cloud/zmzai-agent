@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   budgetDeleteMany: vi.fn(),
   usageDeleteMany: vi.fn(),
   reconciliationDeleteMany: vi.fn(),
+  activityDeleteMany: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: mocks.currentUser }));
@@ -32,6 +33,7 @@ vi.mock("@/models/wide-research-job", () => ({ WideResearchJobModel: { updateMan
 vi.mock("@/models/project-budget-policy", () => ({ ProjectBudgetPolicyModel: { deleteMany: mocks.budgetDeleteMany } }));
 vi.mock("@/models/project-usage-event", () => ({ ProjectUsageEventModel: { deleteMany: mocks.usageDeleteMany } }));
 vi.mock("@/models/project-relay-usage-reconciliation", () => ({ ProjectRelayUsageReconciliationModel: { deleteMany: mocks.reconciliationDeleteMany } }));
+vi.mock("@/models/project-activity", () => ({ ProjectActivityModel: { deleteMany: mocks.activityDeleteMany } }));
 
 import { DELETE } from "@/app/api/projects/[projectId]/route";
 
@@ -61,6 +63,7 @@ describe("DELETE /api/projects/:projectId", () => {
       mocks.budgetDeleteMany,
       mocks.usageDeleteMany,
       mocks.reconciliationDeleteMany,
+      mocks.activityDeleteMany,
     ]) mock.mockResolvedValue({ acknowledged: true });
   });
 
@@ -80,6 +83,7 @@ describe("DELETE /api/projects/:projectId", () => {
     expect(mocks.budgetDeleteMany).toHaveBeenCalledWith({ projectId: "project_1" });
     expect(mocks.usageDeleteMany).toHaveBeenCalledWith({ projectId: "project_1" });
     expect(mocks.reconciliationDeleteMany).toHaveBeenCalledWith({ projectId: "project_1" });
+    expect(mocks.activityDeleteMany).toHaveBeenCalledWith({ projectId: "project_1" });
   });
 
   it("does not delete a project for a non-owner", async () => {

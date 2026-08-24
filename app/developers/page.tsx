@@ -12,6 +12,7 @@ type ApiKey = { id: string; prefix: string; name: string; workspaceIds: string[]
 type WebhookEvent = "task.succeeded" | "task.failed" | "task.cancelled";
 type Subscription = { id: string; workspaceId: string; name: string; url: string; events: WebhookEvent[]; status: "active" | "paused"; secretPrefix: string; lastDeliveredAt: string | null; lastError: string | null; createdAt: string };
 type Delivery = { deliveryId: string; eventType: WebhookEvent; taskId: string; runId: string; status: "pending" | "delivering" | "delivered" | "failed"; attempts: number; nextAttemptAt: string; responseStatus: number | null; lastError: string | null; deliveredAt: string | null; createdAt: string };
+type WebhookStats = { delivered: number; pending: number; failed: number; total: number; consecutiveFailures: number };
 
 const scopeOptions: Array<{ id: ApiKeyScope; label: string; detail: string }> = [
   { id: "tasks:write", label: "创建任务", detail: "通过 API 发起 Agent 任务" },
@@ -60,6 +61,7 @@ export default function DevelopersPage() {
   const [revealedSecret, setRevealedSecret] = useState<{ kind: "API Key" | "Webhook 签名密钥"; value: string } | null>(null);
   const [deliveries, setDeliveries] = useState<Record<string, Delivery[]>>({});
   const [openDeliveries, setOpenDeliveries] = useState<string | null>(null);
+  const [stats, setStats] = useState<Record<string, WebhookStats>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,11 +153,22 @@ export default function DevelopersPage() {
   const toggleDeliveries = async (subscription: Subscription) => {
     if (openDeliveries === subscription.id) { setOpenDeliveries(null); return; }
     setOpenDeliveries(subscription.id);
-    if (deliveries[subscription.id]) return;
+    const [deliveryResult, statsResult] = await Promise.all([
+      deliveries[subscription.id] ? Promise.resolve({ deliveries: deliveries[subscription.id] }) : json<{ deliveries: Delivery[] }>(`/api/webhooks/${encodeURIComponent(subscription.id)}/deliveries`).catch((cause) => { setError(cause instanceof Error ? cause.message : "无法加载投递记录"); return { deliveries: [] }; }),
+      json<WebhookStats>(`/api/webhooks/${encodeURIComponent(subscription.id)}/stats`).catch(() => ({ delivered: 0, pending: 0, failed: 0, total: 0, consecutiveFailures: 0 })),
+    ]);
+    setDeliveries((current) => ({ ...current, [subscription.id]: deliveryResult.deliveries }));
+    setStats((current) => ({ ...current, [subscription.id]: statsResult }));
+  };
+  const retryDelivery = async (subscriptionId: string, deliveryId: string) => {
+    setBusy(deliveryId); setError(null);
     try {
-      const result = await json<{ deliveries: Delivery[] }>(`/api/webhooks/${encodeURIComponent(subscription.id)}/deliveries`);
-      setDeliveries((current) => ({ ...current, [subscription.id]: result.deliveries }));
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "无法加载投递记录"); }
+      await json(`/api/webhooks/${encodeURIComponent(subscriptionId)}/deliveries/${encodeURIComponent(deliveryId)}/retry`, { method: "POST" });
+      setDeliveries((current) => ({ ...current, [subscriptionId]: (current[subscriptionId] ?? []).map((d) => d.deliveryId === deliveryId ? { ...d, status: "pending" as const, attempts: 0, lastError: null } : d) }));
+      const statsResult = await json<WebhookStats>(`/api/webhooks/${encodeURIComponent(subscriptionId)}/stats`).catch(() => ({ delivered: 0, pending: 0, failed: 0, total: 0, consecutiveFailures: 0 }));
+      setStats((current) => ({ ...current, [subscriptionId]: statsResult }));
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "重试失败"); }
+    finally { setBusy(null); }
   };
 
   const { loggedIn, loading } = useLoggedIn();
@@ -280,12 +293,22 @@ export default function DevelopersPage() {
                   <p className="mt-1 text-sm text-ink-2">{subscription.events.map((event) => eventOptions.find((option) => option.id === event)?.label ?? event).join(" · ")} · 签名 {subscription.secretPrefix}...</p>
                   <small className="text-xs text-ink-3">最近投递 {time(subscription.lastDeliveredAt)}</small>
                   {subscription.lastError && <p className="mt-1 text-sm text-danger">{subscription.lastError}</p>}
+                  {openDeliveries === subscription.id && stats[subscription.id] && (
+                    <div className="mt-2 flex flex-wrap gap-3 rounded-sm border border-line bg-surface px-3 py-2 text-xs">
+                      <span className="text-ink-2">共 <strong className="text-ink">{stats[subscription.id].total}</strong> 次投递</span>
+                      <span className="text-success">已投递 {stats[subscription.id].delivered}</span>
+                      {stats[subscription.id].pending > 0 && <span className="text-warning">投递中 {stats[subscription.id].pending}</span>}
+                      {stats[subscription.id].failed > 0 && <span className="text-danger">失败 {stats[subscription.id].failed}</span>}
+                      {stats[subscription.id].consecutiveFailures >= 3 && <Badge variant="danger" size="sm">连续 {stats[subscription.id].consecutiveFailures} 次失败</Badge>}
+                    </div>
+                  )}
                   {openDeliveries === subscription.id && (
                     <div className="mt-2 flex flex-col gap-1.5 rounded-sm border border-line bg-surface p-3">
                       {deliveries[subscription.id] ? deliveries[subscription.id].length ? deliveries[subscription.id].map((delivery) => (
                         <div className="flex items-center gap-2 text-xs text-ink-2" key={delivery.deliveryId}>
                           <Badge variant={deliveryVariant(delivery.status)} size="sm">{delivery.status === "delivered" ? "已投递" : delivery.status === "failed" ? "失败" : "投递中"}</Badge>
                           <div className="min-w-0"><strong className="block text-ink">{eventOptions.find((option) => option.id === delivery.eventType)?.label ?? delivery.eventType}</strong><small>{delivery.status === "delivered" ? `HTTP ${delivery.responseStatus ?? "-"}` : `第 ${delivery.attempts} 次尝试`}{delivery.lastError ? ` · ${delivery.lastError}` : ""}</small></div>
+                          {delivery.status === "failed" && <button type="button" className="flex-shrink-0 rounded-sm border border-line px-2 py-0.5 text-xs text-ink-2 hover:bg-surface-hover disabled:opacity-50" disabled={busy === delivery.deliveryId} onClick={() => void retryDelivery(subscription.id, delivery.deliveryId)}>{busy === delivery.deliveryId ? "重试中" : "重试"}</button>}
                           <time className="ml-auto flex-shrink-0 text-ink-3">{time(delivery.createdAt)}</time>
                         </div>
                       )) : <p className="text-xs text-ink-3">还没有投递记录。</p> : <p className="text-xs text-ink-3">正在加载投递记录…</p>}

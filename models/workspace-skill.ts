@@ -11,9 +11,9 @@ const workspaceSkillSchema = new Schema(
     description: { type: String, required: true, default: "", maxlength: 2_000 },
     repository: { type: String, required: true, immutable: true, match: /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/ },
     requestedRef: { type: String, required: true, immutable: true, maxlength: 256 },
-    commitSha: { type: String, required: true, immutable: true, match: /^[0-9a-f]{40}$/ },
+    commitSha: { type: String, required: true, match: /^[0-9a-f]{40}$/ },
     path: { type: String, required: true, immutable: true, maxlength: 512 },
-    markdown: { type: String, required: true, immutable: true, maxlength: 256 * 1024 },
+    markdown: { type: String, required: true, maxlength: 256 * 1024 },
   },
   { strict: "throw", timestamps: true },
 );

@@ -43,7 +43,7 @@ export const fwApi = {
       body: JSON.stringify(input),
     }),
   getSession: (sessionId: string) => requestJson<SessionSnapshot>(`/api/fw/sessions/${encodeURIComponent(sessionId)}`),
-  prompt: (sessionId: string, input: { text: string }) =>
+  prompt: (sessionId: string, input: { text: string; images?: Array<{ url: string; mediaType: string }> }) =>
     requestJson<{ accepted: boolean; queued: boolean }>(`/api/fw/sessions/${encodeURIComponent(sessionId)}/prompt`, {
       method: "POST",
       headers: { "content-type": "application/json" },

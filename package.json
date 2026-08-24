@@ -26,8 +26,6 @@
     "@zmzai/theme": "^0.5.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "framer-motion": "^11.0.0",
-    "highlight.js": "^11.11.1",
     "jszip": "3.10.1",
     "mongodb": "^7.5.0",
     "mongoose": "^9.9.1",
@@ -35,9 +33,7 @@
     "pptx-preview": "^1.0.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-markdown": "^10.1.0",
     "react-resizable-panels": "^3.0.6",
-    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^2.5.0",
     "zod": "^4.4.3"
   },

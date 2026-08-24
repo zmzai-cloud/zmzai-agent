@@ -26,6 +26,15 @@ const workspaceSchema = new Schema(
     pluginIds: { type: [String], default: [] },
     /** 已启用的 workspace connector id 列表。 */
     connectorIds: { type: [String], default: [] },
+    /** Workspace 知识库条目：Agent 运行时注入的背景知识（API 规范、编码规范、业务术语等）。 */
+    knowledgeBase: {
+      type: [{
+        entryId: { type: String, required: true },
+        title: { type: String, required: true, trim: true, maxlength: 128 },
+        content: { type: String, required: true, maxlength: 16 * 1024 },
+      }],
+      default: [],
+    },
     /** 会话级权限规则（allow/deny/ask，last-match-wins）。 */
     permission: {
       type: [{ permission: String, pattern: String, action: { type: String, enum: ["allow", "deny", "ask"] } }],

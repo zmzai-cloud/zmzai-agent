@@ -20,6 +20,7 @@ export type WorkspaceSummary = {
   skillIds: string[];
   pluginIds: string[];
   connectorIds: string[];
+  knowledgeBase: Array<{ entryId: string; title: string; content: string }>;
   permission: Array<{ permission: string; pattern: string; action: "allow" | "deny" | "ask" }>;
   createdAt: string;
   updatedAt: string;
@@ -38,6 +39,7 @@ function toWorkspaceSummary(workspace: {
   skillIds?: string[];
   pluginIds?: string[];
   connectorIds?: string[];
+  knowledgeBase?: Array<{ entryId: string; title: string; content: string }>;
   permission?: unknown;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +59,7 @@ function toWorkspaceSummary(workspace: {
     skillIds: workspace.skillIds ?? [],
     pluginIds: workspace.pluginIds ?? [],
     connectorIds: workspace.connectorIds ?? [],
+    knowledgeBase: workspace.knowledgeBase ?? [],
     permission,
     createdAt: workspace.createdAt.toISOString(),
     updatedAt: workspace.updatedAt.toISOString(),
@@ -148,36 +151,69 @@ export async function deleteWorkspace(userId: string, workspaceId: string): Prom
   const workspace = await WorkspaceModel.findOne({ userId, workspaceId }).lean();
   if (!workspace) return false;
 
-  const { FrameworkSessionModel, FrameworkMessageModel, FrameworkPartModel } = await import("@/framework/core/session/mongo-models");
-  const { FrameworkEventModel, FrameworkSeqModel } = await import("@/framework/core/events/mongo-models");
-  const { deleteRunArtifacts } = await import("@/lib/artifact-storage");
-  const { WorkspaceSkillModel } = await import("@/models/workspace-skill");
-  const { WorkspacePluginModel } = await import("@/models/workspace-plugin");
-  const { WorkspaceConnectorModel } = await import("@/models/workspace-connector");
-  const { TaskModel } = await import("@/models/task");
-  const { RunModel } = await import("@/models/run");
-  const { CheckpointModel } = await import("@/models/checkpoint");
-  const { ApprovalGrantModel, ApprovalRequestModel } = await import("@/models/approval");
-  const { ProjectModel } = await import("@/models/project");
-  const { ProjectArtifactModel } = await import("@/models/project-artifact");
-  const { ProjectContextItemModel } = await import("@/models/project-context-item");
-  const { ProjectMemberModel } = await import("@/models/project-member");
-  const { AutomationModel } = await import("@/models/automation");
-  const { AutomationExecutionModel } = await import("@/models/automation-execution");
-  const { AutomationWebhookEventModel } = await import("@/models/automation-webhook-event");
-  const { ArtifactLineageModel } = await import("@/models/artifact-lineage");
-  const { SubagentRunModel } = await import("@/models/subagent-run");
-  const { WideResearchJobModel } = await import("@/models/wide-research-job");
-  const { WorkspaceBudgetPolicyModel } = await import("@/models/workspace-budget-policy");
-  const { WorkspaceUsageEventModel } = await import("@/models/workspace-usage-event");
-  const { ProjectBudgetPolicyModel } = await import("@/models/project-budget-policy");
-  const { ProjectUsageEventModel } = await import("@/models/project-usage-event");
-  const { ProjectRelayUsageReconciliationModel } = await import("@/models/project-relay-usage-reconciliation");
-  const { WorkspaceRelayUsageReconciliationModel } = await import("@/models/workspace-relay-usage-reconciliation");
-  const { SandboxArtifactModel } = await import("@/models/sandbox-artifact");
-  const { WebhookSubscriptionModel } = await import("@/models/webhook-subscription");
-  const { WebhookDeliveryModel } = await import("@/models/webhook-delivery");
-  const { AgentApiKeyModel } = await import("@/models/agent-api-key");
+  const [
+    { FrameworkSessionModel, FrameworkMessageModel, FrameworkPartModel },
+    { FrameworkEventModel, FrameworkSeqModel },
+    { deleteRunArtifacts },
+    { WorkspaceSkillModel },
+    { WorkspacePluginModel },
+    { WorkspaceConnectorModel },
+    { TaskModel },
+    { RunModel },
+    { CheckpointModel },
+    { ApprovalGrantModel, ApprovalRequestModel },
+    { ProjectModel },
+    { ProjectArtifactModel },
+    { ProjectContextItemModel },
+    { ProjectMemberModel },
+    { AutomationModel },
+    { AutomationExecutionModel },
+    { AutomationWebhookEventModel },
+    { ArtifactLineageModel },
+    { SubagentRunModel },
+    { WideResearchJobModel },
+    { WorkspaceBudgetPolicyModel },
+    { WorkspaceUsageEventModel },
+    { ProjectBudgetPolicyModel },
+    { ProjectUsageEventModel },
+    { ProjectRelayUsageReconciliationModel },
+    { WorkspaceRelayUsageReconciliationModel },
+    { SandboxArtifactModel },
+    { WebhookSubscriptionModel },
+    { WebhookDeliveryModel },
+    { AgentApiKeyModel },
+  ] = await Promise.all([
+    import("@/framework/core/session/mongo-models"),
+    import("@/framework/core/events/mongo-models"),
+    import("@/lib/artifact-storage"),
+    import("@/models/workspace-skill"),
+    import("@/models/workspace-plugin"),
+    import("@/models/workspace-connector"),
+    import("@/models/task"),
+    import("@/models/run"),
+    import("@/models/checkpoint"),
+    import("@/models/approval"),
+    import("@/models/project"),
+    import("@/models/project-artifact"),
+    import("@/models/project-context-item"),
+    import("@/models/project-member"),
+    import("@/models/automation"),
+    import("@/models/automation-execution"),
+    import("@/models/automation-webhook-event"),
+    import("@/models/artifact-lineage"),
+    import("@/models/subagent-run"),
+    import("@/models/wide-research-job"),
+    import("@/models/workspace-budget-policy"),
+    import("@/models/workspace-usage-event"),
+    import("@/models/project-budget-policy"),
+    import("@/models/project-usage-event"),
+    import("@/models/project-relay-usage-reconciliation"),
+    import("@/models/workspace-relay-usage-reconciliation"),
+    import("@/models/sandbox-artifact"),
+    import("@/models/webhook-subscription"),
+    import("@/models/webhook-delivery"),
+    import("@/models/agent-api-key"),
+  ]);
 
   const sessions = await FrameworkSessionModel.find({ workspaceId }).select({ sessionId: 1 }).lean();
   const sessionIds = sessions.map((session) => session.sessionId);
@@ -231,11 +267,11 @@ export async function deleteWorkspace(userId: string, workspaceId: string): Prom
     WorkspaceModel.deleteOne({ workspaceId }),
   ]);
   const scopedKeys = await AgentApiKeyModel.find({ workspaceIds: workspaceId }).select({ agentApiKeyId: 1, workspaceIds: 1 }).lean();
-  for (const key of scopedKeys) {
+  await Promise.all(scopedKeys.map(async (key) => {
     const remaining = key.workspaceIds.filter((id) => id !== workspaceId);
-    if (remaining.length) await AgentApiKeyModel.updateOne({ agentApiKeyId: key.agentApiKeyId }, { $set: { workspaceIds: remaining } });
-    else await AgentApiKeyModel.deleteOne({ agentApiKeyId: key.agentApiKeyId });
-  }
+    if (remaining.length) return AgentApiKeyModel.updateOne({ agentApiKeyId: key.agentApiKeyId }, { $set: { workspaceIds: remaining } });
+    return AgentApiKeyModel.deleteOne({ agentApiKeyId: key.agentApiKeyId });
+  }));
   return true;
 }
 

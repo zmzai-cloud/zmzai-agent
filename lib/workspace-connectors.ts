@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
+import { ConnectorAuditLogModel } from "@/models/connector-audit-log";
 import { decryptConnectorHeaders, encryptConnectorHeaders } from "@/lib/connector-secrets";
 import { WorkspaceConnectorModel } from "@/models/workspace-connector";
 
@@ -74,6 +75,7 @@ export async function createWorkspaceConnector(input: { userId: string; workspac
   await assertPublicConnectorTarget(url);
   const record = await WorkspaceConnectorModel.create({ connectorId: `mcp_${randomUUID()}`, userId: input.userId, workspaceId: input.workspaceId, name: input.name, transport: input.transport, url, encryptedHeaders: encryptConnectorHeaders(input.headers) });
   await import("@/models/workspace").then(({ WorkspaceModel }) => WorkspaceModel.updateOne({ userId: input.userId, workspaceId: input.workspaceId }, { $addToSet: { connectorIds: record.connectorId } }));
+  void ConnectorAuditLogModel.create({ logId: `cal_${randomUUID().replaceAll("-", "").slice(0, 20)}`, connectorId: record.connectorId, workspaceId: input.workspaceId, userId: input.userId, kind: "created", detail: `创建 ${input.transport} 连接器 ${input.name}` });
   return summary(record);
 }
 
@@ -99,6 +101,7 @@ export async function deleteWorkspaceConnector(input: { userId: string; workspac
   const deleted = await WorkspaceConnectorModel.deleteOne({ userId: input.userId, workspaceId: input.workspaceId, connectorId: input.connectorId });
   if (!deleted.deletedCount) return false;
   await import("@/models/workspace").then(({ WorkspaceModel }) => WorkspaceModel.updateOne({ userId: input.userId, workspaceId: input.workspaceId }, { $pull: { connectorIds: input.connectorId } }));
+  void ConnectorAuditLogModel.create({ logId: `cal_${randomUUID().replaceAll("-", "").slice(0, 20)}`, connectorId: input.connectorId, workspaceId: input.workspaceId, userId: input.userId, kind: "deleted", detail: "删除连接器" });
   return true;
 }
 
@@ -167,5 +170,6 @@ export async function testWorkspaceConnector(input: { userId: string; workspaceI
   connector.lastError = lastError;
   connector.lastCheckedAt = new Date();
   await connector.save();
+  void ConnectorAuditLogModel.create({ logId: `cal_${randomUUID().replaceAll("-", "").slice(0, 20)}`, connectorId: input.connectorId, workspaceId: input.workspaceId, userId: input.userId, kind: "tested", detail: status === "ready" ? "连接测试成功" : `连接测试失败：${lastError ?? "未知错误"}` });
   return summary(connector);
 }

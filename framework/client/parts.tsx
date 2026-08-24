@@ -66,16 +66,22 @@ export function MessageView({ entry: source, hideTools = false, sessionIdle = fa
   const entry = entries[0];
   if (!entry) return null;
   if (entry.info.role === "user") {
-    const text = entry.parts
-      .filter((part): part is Extract<Part, { type: "text" }> => part.type === "text")
-      .map((part) => part.text)
-      .join("\n");
-    if (!text.trim()) return null;
+    const textParts = entry.parts.filter((part): part is Extract<Part, { type: "text" }> => part.type === "text");
+    const imageParts = entry.parts.filter((part): part is Extract<Part, { type: "image" }> => part.type === "image");
+    const text = textParts.map((part) => part.text).join("\n");
+    if (!text.trim() && !imageParts.length) return null;
     const created = new Date(entry.info.time.created);
     const timeLabel = Number.isNaN(created.getTime()) ? null : created.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
     return (
       <MessageItem role="user" avatar="你" name="你" time={timeLabel}>
-        <div className="zmz-message-content">{text}</div>
+        {text.trim() ? <div className="zmz-message-content">{text}</div> : null}
+        {imageParts.length ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {imageParts.map((part) => (
+              <img key={part.id} src={part.url} alt={part.alt || "用户上传图片"} className="max-h-48 max-w-full rounded-md border border-line object-contain" />
+            ))}
+          </div>
+        ) : null}
       </MessageItem>
     );
   }
@@ -124,9 +130,22 @@ export function MessageView({ entry: source, hideTools = false, sessionIdle = fa
   const timeLabel = firstCreated && !Number.isNaN(new Date(firstCreated).getTime())
     ? new Date(firstCreated).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
     : null;
+  const stepTokens = assistantEntries.reduce(
+    (acc, e) => {
+      if (e.info.role === "assistant" && e.info.tokens) {
+        acc.input += e.info.tokens.input ?? 0;
+        acc.output += e.info.tokens.output ?? 0;
+        acc.cacheRead += e.info.tokens.cacheRead ?? 0;
+      }
+      return acc;
+    },
+    { input: 0, output: 0, cacheRead: 0 },
+  );
+  const hasTokens = stepTokens.input > 0 || stepTokens.output > 0;
   return (
     <MessageItem role="assistant" avatar="使" name="ZMZAI Agent" status={{ active }} time={timeLabel} noMotion>
       <div className="fw-execution-tree">{rendered}</div>
+      {hasTokens && <div className="run-note run-token-note">{formatTokens(stepTokens.input)} in · {formatTokens(stepTokens.output)} out{stepTokens.cacheRead > 0 ? ` · ${formatTokens(stepTokens.cacheRead)} cache` : ""}</div>}
       {uncertainTool && <div className="run-unknown-note" role="alert">执行结果暂时无法确认，任务已暂停。请先确认外部动作是否已经生效，再发送消息继续。</div>}
       {error && <div className="run-note">出错了：{error.message}</div>}
     </MessageItem>
@@ -152,6 +171,12 @@ export function groupAssistantMessages(messages: MessageWithParts[]): Array<Mess
   }
   flush();
   return grouped;
+}
+
+function formatTokens(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}k`;
+  return String(count);
 }
 
 /** 产物卡适配器：agent 的 ArtifactCard 数据（GridFS 产物）→ theme ArtifactCard。 */

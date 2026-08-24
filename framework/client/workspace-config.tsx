@@ -22,6 +22,11 @@ type WorkspaceDetail = {
 type WorkspaceSkill = { id: string; name: string; description: string; repository: string; path: string };
 type WorkspacePlugin = { id: string; name: string; description: string; version: string; skillCount: number; errors: string[] };
 type WorkspaceBudget = { maxConcurrentRuns: number; monthlyTokenBudget: number; usedTokens: number; reservedRuns: number; usagePeriod: string };
+type KnowledgeEntry = { entryId: string; title: string; content: string };
+type UsageSummary = { inputTokens: number; outputTokens: number; cacheReadTokens: number; totalTokens: number; eventCount: number };
+type UsageDaily = { date: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; totalTokens: number };
+type UsageProject = { projectId: string; projectName: string; totalTokens: number; inputTokens: number; outputTokens: number; cacheReadTokens: number; taskCount: number };
+type UsageData = { summary: UsageSummary; daily: UsageDaily[]; byProject: UsageProject[] };
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, cache: "no-store" });
@@ -54,6 +59,14 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
   const [deleting, setDeleting] = useState(false);
   const [budget, setBudget] = useState<WorkspaceBudget | null>(null);
   const [budgetBusy, setBudgetBusy] = useState(false);
+  const [usage, setUsage] = useState<UsageData | null>(null);
+  const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>([]);
+  const [knowledgeBusy, setKnowledgeBusy] = useState<string | null>(null);
+  const [newKbTitle, setNewKbTitle] = useState("");
+  const [newKbContent, setNewKbContent] = useState("");
+  const [editingKbId, setEditingKbId] = useState<string | null>(null);
+  const [editKbTitle, setEditKbTitle] = useState("");
+  const [editKbContent, setEditKbContent] = useState("");
 
   const remove = useCallback(async () => {
     if (!detail || deleting) return;
@@ -85,6 +98,8 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
       json<{ skills: WorkspaceSkill[] }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/skills`).then((body) => setSkills(body.skills)),
       json<{ plugins: WorkspacePlugin[] }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/plugins`).then((body) => setPlugins(body.plugins)),
       json<{ budget: WorkspaceBudget }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/budget`).then((body) => setBudget(body.budget)),
+      json<{ knowledgeBase: KnowledgeEntry[] }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/knowledge`).then((body) => setKnowledge(body.knowledgeBase)),
+      json<UsageData>(`/api/workspaces/${encodeURIComponent(workspaceId)}/usage`).then((body) => setUsage(body)).catch(() => { /* usage API optional */ }),
     ]).catch((cause) => setError(cause instanceof Error ? cause.message : "无法加载智能体配置"));
   }, [workspaceId, applyDetail]);
 
@@ -98,6 +113,39 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "保存预算失败"); }
     finally { setBudgetBusy(false); }
   }, [budget, budgetBusy, workspaceId]);
+
+  const addKnowledge = useCallback(async () => {
+    if (!newKbTitle.trim() || !newKbContent.trim() || knowledgeBusy) return;
+    setKnowledgeBusy("add");
+    try {
+      const result = await json<{ entry: KnowledgeEntry }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/knowledge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ title: newKbTitle.trim(), content: newKbContent.trim() }) });
+      setKnowledge((current) => [result.entry, ...current]);
+      setNewKbTitle("");
+      setNewKbContent("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "添加失败"); }
+    finally { setKnowledgeBusy(null); }
+  }, [newKbTitle, newKbContent, knowledgeBusy, workspaceId]);
+
+  const deleteKnowledge = useCallback(async (entryId: string) => {
+    setKnowledgeBusy(entryId);
+    try {
+      await json(`/api/workspaces/${encodeURIComponent(workspaceId)}/knowledge?entryId=${encodeURIComponent(entryId)}`, { method: "DELETE" });
+      setKnowledge((current) => current.filter((entry) => entry.entryId !== entryId));
+      if (editingKbId === entryId) setEditingKbId(null);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "删除失败"); }
+    finally { setKnowledgeBusy(null); }
+  }, [workspaceId, editingKbId]);
+
+  const saveKnowledgeEdit = useCallback(async (entryId: string) => {
+    if (!editKbTitle.trim() || !editKbContent.trim()) return;
+    setKnowledgeBusy(entryId);
+    try {
+      const result = await json<{ entry: KnowledgeEntry }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/knowledge`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ entryId, title: editKbTitle.trim(), content: editKbContent.trim() }) });
+      setKnowledge((current) => current.map((entry) => entry.entryId === entryId ? result.entry : entry));
+      setEditingKbId(null);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "保存失败"); }
+    finally { setKnowledgeBusy(null); }
+  }, [editKbTitle, editKbContent, workspaceId]);
 
   const updateCapabilities = useCallback(async (patch: Partial<Pick<WorkspaceDetail, "skillIds" | "pluginIds">>) => {
     const body = await json<{ workspace: WorkspaceDetail }>(`/api/workspaces/${encodeURIComponent(workspaceId)}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(patch) });
@@ -224,6 +272,37 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
             <Button type="button" size="sm" variant="secondary" disabled={budgetBusy} onClick={() => void saveBudget()}><Icon name="check" size={13} />{budgetBusy ? "保存中" : "保存预算"}</Button>
             <small className="mt-2 block text-xs leading-relaxed text-ink-3">月度上限为 0 表示不限制。项目预算仍可设置更严格的限制。</small>
           </section>}
+          {usage && <UsageDashboard usage={usage} monthlyBudget={budget?.monthlyTokenBudget ?? 0} />}
+          <section className="mt-5 border-t border-line pt-4 text-sm">
+            <div className="mb-3"><div className="flex items-center justify-between"><div><span className="eyebrow">知识库</span><strong className="mt-1 block text-ink">Workspace 背景知识</strong></div><span className="font-mono text-xs text-ink-3">{knowledge.length} 条</span></div><small className="block text-xs text-ink-3">Agent 运行时自动注入，补充 API 规范、编码规范、业务术语等。</small></div>
+            <div className="space-y-2">
+              {knowledge.map((entry) => (
+                <div key={entry.entryId} className="rounded-sm border border-line p-2">
+                  {editingKbId === entry.entryId ? (
+                    <div className="flex flex-col gap-1.5">
+                      <Input value={editKbTitle} onChange={(event) => setEditKbTitle(event.target.value)} placeholder="标题" className="text-xs" />
+                      <Textarea value={editKbContent} onChange={(event) => setEditKbContent(event.target.value)} placeholder="内容" rows={4} className="font-mono text-xs" />
+                      <div className="flex gap-1.5"><Button type="button" size="sm" disabled={knowledgeBusy === entry.entryId} onClick={() => void saveKnowledgeEdit(entry.entryId)}>保存</Button><Button type="button" size="sm" variant="ghost" onClick={() => setEditingKbId(null)}>取消</Button></div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-2">
+                      <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setEditingKbId(entry.entryId); setEditKbTitle(entry.title); setEditKbContent(entry.content); }}>
+                        <strong className="block truncate text-xs text-ink">{entry.title}</strong>
+                        <small className="mt-0.5 block truncate text-ink-3">{entry.content.slice(0, 120)}</small>
+                      </button>
+                      <button type="button" className="shrink-0 rounded-sm p-1 text-ink-3 transition-colors hover:bg-line hover:text-danger" disabled={knowledgeBusy === entry.entryId} aria-label={`删除 ${entry.title}`} onClick={() => void deleteKnowledge(entry.entryId)}><Icon name="trash" size={11} /></button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {!knowledge.length && <p className="text-xs text-ink-3">还没有知识条目。</p>}
+            </div>
+            <div className="mt-3 flex flex-col gap-2">
+              <Input value={newKbTitle} onChange={(event) => setNewKbTitle(event.target.value)} placeholder="条目标题（如：API 命名规范）" aria-label="知识标题" className="text-xs" />
+              <Textarea value={newKbContent} onChange={(event) => setNewKbContent(event.target.value)} placeholder="知识内容（如：所有 REST API 使用 camelCase 命..." rows={3} className="font-mono text-xs" />
+              <Button type="button" size="sm" variant="secondary" disabled={!newKbTitle.trim() || !newKbContent.trim() || Boolean(knowledgeBusy)} onClick={() => void addKnowledge()}><Icon name="plus" size={13} />{knowledgeBusy === "add" ? "添加中" : "添加知识"}</Button>
+            </div>
+          </section>
           <section className="mt-5 border-t border-line pt-4 text-sm">
             <div className="mb-3 flex items-center justify-between"><div><span className="eyebrow">可用能力</span><strong className="mt-1 block text-ink">Skills 与 Plugins</strong></div><span className="font-mono text-xs text-ink-3">{detail.skillIds.length + detail.pluginIds.length} 已启用</span></div>
             <div className="space-y-2">
@@ -252,5 +331,100 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
         </aside>
       </div>
     </main>
+  );
+}
+
+function fmtCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
+function UsageDashboard({ usage, monthlyBudget }: { usage: UsageData; monthlyBudget: number }) {
+  const { summary, daily, byProject } = usage;
+  const maxDaily = Math.max(...daily.map((d) => d.totalTokens), 1);
+  const budgetPct = monthlyBudget > 0 ? Math.min(100, Math.round((summary.totalTokens / monthlyBudget) * 100)) : 0;
+
+  return (
+    <section className="mt-5 rounded-sm border border-line bg-surface p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div><span className="eyebrow">用量分析</span><strong className="mt-1 block text-ink">近 30 天</strong></div>
+        <span className="font-mono text-xs text-ink-3">{summary.eventCount} 次调用</span>
+      </div>
+
+      {/* Summary stats */}
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <div className="rounded-sm border border-line p-2">
+          <div className="text-[10px] uppercase tracking-wide text-ink-3">总 Tokens</div>
+          <div className="font-mono text-sm text-ink">{fmtCount(summary.totalTokens)}</div>
+        </div>
+        <div className="rounded-sm border border-line p-2">
+          <div className="text-[10px] uppercase tracking-wide text-ink-3">缓存命中</div>
+          <div className="font-mono text-sm text-ink">{fmtCount(summary.cacheReadTokens)}</div>
+        </div>
+        <div className="rounded-sm border border-line p-2">
+          <div className="text-[10px] uppercase tracking-wide text-ink-3">输入</div>
+          <div className="font-mono text-sm text-ink">{fmtCount(summary.inputTokens)}</div>
+        </div>
+        <div className="rounded-sm border border-line p-2">
+          <div className="text-[10px] uppercase tracking-wide text-ink-3">输出</div>
+          <div className="font-mono text-sm text-ink">{fmtCount(summary.outputTokens)}</div>
+        </div>
+      </div>
+
+      {/* Budget gauge */}
+      {monthlyBudget > 0 && (
+        <div className="mb-3">
+          <div className="mb-1 flex items-center justify-between text-[10px] text-ink-3">
+            <span>预算使用</span>
+            <span>{budgetPct}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-line">
+            <div className={`h-full rounded-full transition-all ${budgetPct > 90 ? "bg-danger" : budgetPct > 70 ? "bg-warning" : "bg-success"}`} style={{ width: `${budgetPct}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Daily trend chart */}
+      {daily.length > 0 && (
+        <div className="mb-3">
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-ink-3">每日用量</div>
+          <div className="usage-chart">
+            {daily.map((day) => (
+              <div key={day.date} className="usage-chart-bar" title={`${day.date}: ${fmtCount(day.totalTokens)} tokens`}>
+                <div className="usage-bar-segment usage-bar-input" style={{ height: `${(day.inputTokens / maxDaily) * 100}%` }} />
+                <div className="usage-bar-segment usage-bar-output" style={{ height: `${(day.outputTokens / maxDaily) * 100}%` }} />
+                <div className="usage-bar-segment usage-bar-cache" style={{ height: `${(day.cacheReadTokens / maxDaily) * 100}%` }} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 flex gap-3 text-[10px] text-ink-3">
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-[var(--color-muted)]" />输入</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-[var(--color-accent)]" />输出</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-[var(--color-success)]" />缓存</span>
+          </div>
+        </div>
+      )}
+
+      {/* Project breakdown */}
+      {byProject.length > 0 && (
+        <div>
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-ink-3">按项目</div>
+          <div className="space-y-1.5">
+            {byProject.map((project) => (
+              <div key={project.projectId} className="flex items-center gap-2 text-xs">
+                <span className="min-w-0 flex-1 truncate text-ink">{project.projectName}</span>
+                <span className="shrink-0 font-mono text-ink-3">{fmtCount(project.totalTokens)}</span>
+                <div className="w-16 shrink-0 overflow-hidden rounded-full bg-line">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(2, (project.totalTokens / (byProject[0]?.totalTokens || 1)) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!daily.length && !byProject.length && <p className="text-xs text-ink-3">近 30 天没有用量数据。</p>}
+    </section>
   );
 }

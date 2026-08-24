@@ -98,6 +98,7 @@ function getOrCreateRunner(): SessionRunner {
           getWorkspaceSkillsByIds({ userId: session.userId, workspaceId: session.workspaceId, skillIds: ws.skillIds }),
           getWorkspacePluginSkillsByIds({ userId: session.userId, workspaceId: session.workspaceId, pluginIds: ws.pluginIds }),
         ]);
+        const knowledgeBase = (ws.knowledgeBase ?? []) as Array<{ entryId: string; title: string; content: string }>;
         // 自治档位：auto 档在 workspace 规则前预置 bash 放行；排在后面（last-match-wins）
         // 的显式规则仍可覆盖它，deny/ask 不被绕过。"always" 是历史值，等同 ask。
         const autoAllow: Ruleset = ws.approvalMode === "auto" ? [{ permission: "bash", pattern: "*", action: "allow" }] : [];
@@ -107,7 +108,7 @@ function getOrCreateRunner(): SessionRunner {
             description: ws.description || undefined,
             mode: "primary",
             model: { providerId: "relay", modelId: ws.defaultModel },
-            prompt: combineAgentInstructions(ws.prompt, project?.instructions, projectContext, [...skills, ...pluginSkills]),
+            prompt: combineAgentInstructions(ws.prompt, project?.instructions, projectContext, knowledgeBase, [...skills, ...pluginSkills]),
             steps: ws.steps,
             permission: [...autoAllow, ...(ws.permission as Ruleset)],
           },

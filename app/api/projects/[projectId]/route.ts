@@ -17,6 +17,7 @@ import { WideResearchJobModel } from "@/models/wide-research-job";
 import { ProjectBudgetPolicyModel } from "@/models/project-budget-policy";
 import { ProjectUsageEventModel } from "@/models/project-usage-event";
 import { ProjectRelayUsageReconciliationModel } from "@/models/project-relay-usage-reconciliation";
+import { ProjectActivityModel } from "@/models/project-activity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +74,7 @@ export async function DELETE(_: Request, context: { params: Promise<{ projectId:
     ProjectBudgetPolicyModel.deleteMany({ projectId }),
     ProjectUsageEventModel.deleteMany({ projectId }),
     ProjectRelayUsageReconciliationModel.deleteMany({ projectId }),
+    ProjectActivityModel.deleteMany({ projectId }),
   ]);
   return NextResponse.json({ deleted: true }, { headers: { "cache-control": "no-store" } });
 }

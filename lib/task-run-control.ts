@@ -4,7 +4,8 @@ import type { PersistedFrameworkEvent, SessionInfo } from "@zmzai/agent-framewor
 
 import { RunModel, type RunRecord } from "@/models/run";
 import { TaskModel, type TaskRecord } from "@/models/task";
-import { canSupersedeActiveRun, canTransitionRun, isActiveRunStatus, taskStatusForRun, transitionRun, type RunStatus } from "@/lib/task-state-machine";
+import { ProjectActivityModel } from "@/models/project-activity";
+import { canSupersedeActiveRun, canTransitionRun, isActiveRunStatus, isTerminalRunStatus, taskStatusForRun, transitionRun, type RunStatus } from "@/lib/task-state-machine";
 import { releaseProjectRun, releaseWorkspaceRun, reserveProjectRun, reserveWorkspaceRun } from "@/lib/project-budget";
 
 export class ActiveRunConflictError extends Error {
@@ -27,7 +28,7 @@ function isDuplicateKey(error: unknown): boolean {
 }
 
 export async function createTaskForSession(input: { session: SessionInfo; goal?: string; title?: string; projectId?: string | null; source?: "chat" | "automation" | "api" | "webhook" | "slack" | "email" | "research"; outputSchema?: Record<string, unknown> | null }): Promise<TaskRecord> {
-  return TaskModel.create({
+  const task = await TaskModel.create({
     taskId: taskId(),
     workspaceId: input.session.workspaceId,
     projectId: input.projectId ?? null,
@@ -41,6 +42,17 @@ export async function createTaskForSession(input: { session: SessionInfo; goal?:
     latestRunId: null,
     version: 1,
   });
+  if (input.projectId) {
+    void ProjectActivityModel.create({
+      activityId: `act_${randomUUID().replaceAll("-", "").slice(0, 20)}`,
+      projectId: input.projectId,
+      userId: input.session.userId,
+      kind: "task_created",
+      taskId: task.taskId,
+      summary: task.title || "",
+    }).catch(() => undefined);
+  }
+  return task;
 }
 
 export async function createRunForTask(input: {
@@ -199,6 +211,24 @@ async function updateTaskFromRun(run: RunRecord, status: RunStatus): Promise<voi
       $inc: { version: 1 },
     },
   );
+  // Record project activity for terminal Run states.
+  if (terminal && isTerminalRunStatus(status)) {
+    const task = await TaskModel.findOne({ taskId: run.taskId }).select({ projectId: 1, title: 1 }).lean();
+    if (task?.projectId) {
+      const kind = status === "succeeded" ? "task_completed" : status === "failed" ? "task_failed" : null;
+      if (kind) {
+        void ProjectActivityModel.create({
+          activityId: `act_${randomUUID().replaceAll("-", "").slice(0, 20)}`,
+          projectId: task.projectId,
+          userId: run.userId,
+          kind,
+          taskId: run.taskId,
+          runId: run.runId,
+          summary: task.title || "",
+        }).catch(() => undefined);
+      }
+    }
+  }
 }
 
 export async function transitionRunForSession(sessionId: string, next: RunStatus, terminalReason?: string): Promise<RunRecord | null> {

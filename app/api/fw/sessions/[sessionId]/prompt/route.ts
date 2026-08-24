@@ -13,10 +13,13 @@ import { canRunProject, getProjectAccess } from "@/lib/project-access";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const imageSchema = z.object({ url: z.string().min(1).max(20 * 1024 * 1024), mediaType: z.string().regex(/^image\//) });
+
 const promptSchema = z
   .object({
     text: z.string().trim().min(1).max(32 * 1024),
     agent: z.string().trim().min(1).max(64).optional(),
+    images: z.array(imageSchema).max(4).optional(),
   })
   .strict();
 
@@ -48,6 +51,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
   const result = await getFrameworkRunner().prompt(sessionId, {
     text: parsed.data.text,
     ...(parsed.data.agent ? { agent: parsed.data.agent } : {}),
+    ...(parsed.data.images?.length ? { images: parsed.data.images } : {}),
   });
   return NextResponse.json({ accepted: true, queued: result.queued, task: control.task, run: control.run }, { status: 202, headers: { "cache-control": "no-store" } });
 }

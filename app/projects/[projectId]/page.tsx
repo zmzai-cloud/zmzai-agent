@@ -14,6 +14,8 @@ type ContextItem = { contextId: string; type: "note" | "link"; title: string; co
 type Member = { memberId: string; userId: string; role: "viewer" | "member" | "editor"; user: { name: string; email: string } | null };
 type Automation = { automationId: string; projectId?: string | null; name: string; schedule: string; status: "active" | "paused"; lastRunStatus: "idle" | "running" | "succeeded" | "failed"; lastRunTaskId?: string | null; lastError?: string | null };
 type Budget = { projectId: string; maxConcurrentRuns: number; monthlyTokenBudget: number; usedTokens: number; usagePeriod: string; reservedRuns: number };
+type Activity = { activityId: string; kind: string; taskId: string | null; summary: string; createdAt: string };
+type Connector = { id: string; name: string; transport: string; status: string; enabled: boolean };
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, cache: "no-store" });
@@ -65,6 +67,10 @@ export default function ProjectDetailPage() {
   const [contextItems, setContextItems] = useState<ContextItem[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [automations, setAutomations] = useState<Automation[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [projectConnectorIds, setProjectConnectorIds] = useState<string[]>([]);
+  const [connectorBusy, setConnectorBusy] = useState(false);
   const [budget, setBudget] = useState<Budget | null>(null);
   const [budgetBusy, setBudgetBusy] = useState(false);
   const [role, setRole] = useState<"owner" | "viewer" | "member" | "editor">("owner");
@@ -123,10 +129,15 @@ export default function ProjectDetailPage() {
       json<{ members: Member[] }>(`/api/projects/${encodeURIComponent(projectId)}/members`),
       json<{ automations: Automation[] }>("/api/automations"),
       json<{ budget: Budget }>(`/api/projects/${encodeURIComponent(projectId)}/budget`),
-    ]).then(([detail, artifactResult, memberResult, automationResult, budgetResult]) => {
+      json<{ activities: Activity[] }>(`/api/projects/${encodeURIComponent(projectId)}/activity?limit=20`),
+    ]).then(async ([detail, artifactResult, memberResult, automationResult, budgetResult, activityResult]) => {
+      const connectorResult = detail.project.workspaceId ? await json<{ connectors: Connector[] }>(`/api/workspaces/${encodeURIComponent(detail.project.workspaceId)}/connectors`).catch(() => ({ connectors: [] })) : { connectors: [] };
+      const projectConnectorResult = await json<{ connectorIds: string[] }>(`/api/projects/${encodeURIComponent(projectId)}/connectors`).catch(() => ({ connectorIds: [] }));
+      return [detail, artifactResult, memberResult, automationResult, budgetResult, activityResult, connectorResult, projectConnectorResult] as const;
+    }).then(([detail, artifactResult, memberResult, automationResult, budgetResult, activityResult, connectorResult, projectConnectorResult]) => {
       if (cancelled) return;
       setProject(detail.project); setTasks(detail.tasks); setRuns(detail.runs); setContextItems(detail.contextItems ?? []); setMembers(memberResult.members ?? []); setRole(detail.role); setArtifacts(artifactResult.artifacts); setAutomations(automationResult.automations.filter((automation) => automation.projectId === projectId));
-      setName(detail.project.name); setDescription(detail.project.description); setInstructions(detail.project.instructions); setBudget(budgetResult.budget); setError(null);
+      setName(detail.project.name); setDescription(detail.project.description); setInstructions(detail.project.instructions); setBudget(budgetResult.budget); setActivities(activityResult.activities ?? []); setConnectors(connectorResult.connectors ?? []); setProjectConnectorIds(projectConnectorResult.connectorIds ?? []); setError(null);
     }).catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "无法加载项目"); });
     return () => { cancelled = true; };
   }, [projectId]);
@@ -193,6 +204,16 @@ export default function ProjectDetailPage() {
       await json(`/api/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(member.memberId)}`, { method: "DELETE" });
       setMembers((items) => items.filter((item) => item.memberId !== member.memberId));
     } catch (cause) { setError(cause instanceof Error ? cause.message : "移除项目成员失败"); }
+  };
+
+  const saveConnectors = async (ids: string[]) => {
+    if (connectorBusy) return;
+    setConnectorBusy(true);
+    try {
+      await json(`/api/projects/${encodeURIComponent(projectId)}/connectors`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ connectorIds: ids }) });
+      setProjectConnectorIds(ids);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "保存连接器设置失败"); }
+    finally { setConnectorBusy(false); }
   };
 
   if (!project && !error) return <main className="grid min-h-dvh place-items-center bg-bg"><p className="text-sm text-ink-3">正在打开项目…</p></main>;
@@ -365,6 +386,38 @@ export default function ProjectDetailPage() {
           ))}
         </div> : <EmptyState title="还没有运行记录" description="项目任务运行后会出现在这里。" />}
       </Card>
+
+      <Card padding="md" className="mt-6">
+        <SectionHead eyebrow="动态" title="项目活动" right={<Badge variant="outline" size="sm">{activities.length} 条动态</Badge>} />
+        {activities.length ? <div className="flex flex-col gap-1">
+          {activities.map((activity) => (
+            <div className="flex items-center gap-2 rounded-md px-2 py-1.5" key={activity.activityId}>
+              <Badge variant={activity.kind === "task_completed" ? "success" : activity.kind === "task_failed" ? "danger" : "accent"} size="sm">{({ task_created: "新建任务", task_completed: "任务完成", task_failed: "任务失败", artifact_created: "成果产出", member_joined: "成员加入", automation_run: "自动化执行" } as Record<string, string>)[activity.kind] ?? activity.kind}</Badge>
+              <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-ink">{activity.summary || "—"}</strong></span>
+              <small className="flex-shrink-0 text-xs text-ink-3">{formatDate(activity.createdAt)}</small>
+            </div>
+          ))}
+        </div> : <EmptyState title="还没有项目动态" description="任务创建、完成、失败等活动会出现在这里。" />}
+      </Card>
+
+      {canEdit && connectors.length > 0 && (
+        <Card padding="md" className="mt-6">
+          <SectionHead eyebrow="外部能力" title="项目连接器" right={<Badge variant="outline" size="sm">{projectConnectorIds.length} / {connectors.length} 启用</Badge>} />
+          <p className="mb-3 text-sm text-ink-3">选择此项目中可用的连接器。未选中的连接器对本项目任务不可见。</p>
+          <div className="flex flex-col gap-2">
+            {connectors.map((connector) => {
+              const checked = projectConnectorIds.length === 0 || projectConnectorIds.includes(connector.id);
+              return (
+                <label className="flex cursor-pointer items-center gap-2 rounded-sm border border-line px-3 py-2 hover:bg-surface" key={connector.id}>
+                  <input type="checkbox" className="rounded border-line" checked={checked} disabled={connectorBusy} onChange={(event) => { const next = event.target.checked ? [...projectConnectorIds, connector.id] : projectConnectorIds.filter((id) => id !== connector.id); void saveConnectors(next); }} />
+                  <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-ink">{connector.name}</strong><small className="block text-xs text-ink-3">{connector.transport}{connector.status === "error" ? " · 异常" : ""}</small></span>
+                  <Badge variant={connector.status === "ready" ? "success" : connector.status === "error" ? "danger" : "outline"} size="sm">{connector.status === "ready" ? "可用" : connector.status === "error" ? "异常" : "未测试"}</Badge>
+                </label>
+              );
+            })}
+          </div>
+        </Card>
+      )}
       </>}
     </div>
   </main>;
