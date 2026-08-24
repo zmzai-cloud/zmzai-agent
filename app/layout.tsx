@@ -18,8 +18,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agent 使 · zmzai cloud",
-  description: "Agent 编排与工作流 · zmzai cloud 子产品",
+  title: "Agent · zmzai.cloud",
+  description: "Agent 编排与工作流 · zmzai.cloud 子产品",
 };
 
 export const viewport: Viewport = { themeColor: "#FFFFFF" };

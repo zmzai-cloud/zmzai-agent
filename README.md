@@ -1,4 +1,4 @@
-# Agent 使 · zmzai cloud
+# Agent · zmzai.cloud
 
 `a.zmzai.cloud` 是 ZMZ AI 的 Agent 编排与审计工作台。
 
