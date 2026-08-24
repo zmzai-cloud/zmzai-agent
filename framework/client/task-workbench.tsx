@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
-import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, MovingBorder, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, Textarea, type BadgeProps } from "@zmzai/theme";
+import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, MovingBorder, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tabs, Textarea, type BadgeProps } from "@zmzai/theme";
 
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 import { ArtifactPreviewCard, EditCard, groupAssistantMessages, MessageView, PermissionCard, PptxPreview } from "@/framework/client/parts";
@@ -263,6 +263,42 @@ function WorkspacePanel({ artifacts, edits, files, tools, preview, activeTab, on
         {activeTab === "preview" && <EmptyState icon={<Icon name="eye" size={24} />} title="选择一个成果" description="从成果页签选择一个文件开始预览。" />}
       </div>}
     </section>
+  );
+}
+
+/** 任务打开骨架屏：按真实页面结构占位（对话流消息条 + 右侧工作区页签/卡片），
+ *  比整屏"正在打开任务…"观感连贯。 */
+function TaskSkeleton() {
+  return (
+    <main className="flex h-dvh overflow-hidden bg-bg">
+      <section className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-2.5 w-20" />
+            <Skeleton className="h-5 w-64 max-w-full" />
+          </div>
+          <Skeleton className="h-6 w-16 rounded-sm" />
+        </div>
+        <div className="flex-1 space-y-6 overflow-hidden px-5 py-6">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="flex gap-3">
+              <Skeleton className="size-7 flex-shrink-0 rounded-sm" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-line px-5 py-3"><Skeleton className="h-16 w-full rounded-md" /></div>
+      </section>
+      <aside className="hidden min-w-0 flex-1 border-l border-line p-4 lg:block">
+        <Skeleton className="h-4 w-16" />
+        <div className="mt-3 flex gap-2">{["文件", "改动", "终端", "成果"].map((tab) => <Skeleton key={tab} className="h-6 w-14" />)}</div>
+        <div className="mt-4 space-y-3">{[0, 1].map((card) => <Skeleton key={card} className="h-20 w-full rounded-md" />)}</div>
+      </aside>
+    </main>
   );
 }
 
@@ -538,7 +574,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
   // 统一加载态：路由带 taskId/sessionId 但任务详情/会话快照都还没就绪时，
   // 直接显示一个加载屏，不再先渲染兜底假详情再闪"正在恢复任务…"。
   const resolvingTask = Boolean(routeTaskId || routeSessionId) && !snapshot && !detailMatchesTask;
-  if (resolvingTask || (loading && !snapshot && sessionId)) return <main className="workbench-loading">正在打开任务…</main>;
+  if (resolvingTask || (loading && !snapshot && sessionId)) return <TaskSkeleton />;
   if (loadError) return <main className="workbench-loading">{loadError}</main>;
 
   const loginHref = process.env.NODE_ENV === "development" ? "/dev/login" : "https://auth.zmzai.cloud/login";
