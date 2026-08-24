@@ -655,7 +655,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
               )}
               <StatusBadge status={live.pendingPermission ? "waiting_permission" : latestRun?.status ?? live.status} />
               {latestRun?.attempt && latestRun.attempt > 1 && <Badge variant="outline" size="sm">第 {latestRun.attempt} 次尝试</Badge>}
-              {(taskDetail?.role === "owner" || taskDetail?.role === "editor") && <IconButton size="md" label="创建任务分支" onClick={() => void branchTask()}><Icon name="copy" size={13} /></IconButton>}
+              {(taskDetail?.role === "owner" || taskDetail?.role === "editor") && <Button type="button" variant="ghost" size="sm" onClick={() => void branchTask()}><Icon name="copy" size={12} />分支</Button>}
               {latestRun?.status === "paused" && <Button type="button" variant="secondary" size="sm" onClick={() => void action("resume")}><Icon name="play" size={13} />继续</Button>}
               {latestRun?.status === "failed" && <Button type="button" variant="secondary" size="sm" onClick={() => void action("retry")}><Icon name="refresh" size={13} />重试</Button>}
               {busy && <>
@@ -669,7 +669,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
           <div className="conversation-scroll" ref={scrollRef} onScroll={() => { const element = scrollRef.current; if (element) setFollowScroll(element.scrollHeight - element.scrollTop - element.clientHeight < 160); }}>
             <div className="flex flex-col gap-3">
               {messages.length ? messages.map((entry, index) => <MessageView key={Array.isArray(entry) ? `assistant-${index}-${entry[0]?.info.id}` : entry.info.id} entry={entry} hideTools={live.todos.length > 0} sessionIdle={live.status === "idle"} />) : <EmptyState title="任务准备完成" description="开始补充你的要求。" />}
-              <PlanCard todos={live.todos} taskTools={taskTools} onAction={(actionName, index) => void planAction(actionName, index)} onAdjust={adjustPlan} busyIndex={planBusyIndex} />
+              {(live.todos.length > 0 || taskTools.length > 0) && <PlanCard todos={live.todos} taskTools={taskTools} onAction={(actionName, index) => void planAction(actionName, index)} onAdjust={adjustPlan} busyIndex={planBusyIndex} />}
               {qualityResult && <QualityCard result={qualityResult} />}
               {live.pendingPermission && <PermissionCard request={live.pendingPermission as PermissionRequest} busy={replying} onReply={(reply, feedback) => void replyPermission(reply, feedback)} />}
               <SubagentCard subagents={taskDetail?.subagents ?? []} onRetry={(id) => void retrySubagent(id)} retryingId={retryingSubagentId} />

@@ -398,7 +398,8 @@ execution detail is expressed as readable progress, plan, and result blocks. */
   .file-item:hover, .file-item.active { color: var(--color-accent); background: var(--color-paper); }
   .revision-item { padding: 0.45rem 0.5rem; color: var(--color-muted); font-size: 0.75rem; border-bottom: 1px dotted var(--color-line); }
 
-  .conversation-scroll { position: relative; flex: 1; overflow-y: auto; padding: 2rem max(0.25rem, 4%) 1.5rem; }
+  .conversation-scroll { position: relative; flex: 1; overflow-y: auto; padding: 1.5rem 0 1.5rem; }
+  .conversation-scroll > div { width: min(100%, 46rem); margin: 0 auto; }
   .agent-intro { max-width: 36rem; margin-top: 12vh; }
   .agent-intro h1 { margin: 0.5rem 0 0.75rem; font-size: 2rem; line-height: 1.2; }
   .agent-intro p { margin: 0; color: var(--color-muted); font-size: 1.05rem; }

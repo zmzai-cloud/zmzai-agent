@@ -118,7 +118,7 @@ export function WorkbenchRail({ tasks, activeTaskId, onNew, onOpen }: { tasks: R
           {tasks.length ? tasks.slice(0, 20).map(({ task, latestRun }) => {
             const status = latestRun?.status ?? task.status;
             return (
-              <button key={task.taskId} type="button" className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors ${activeTaskId === task.taskId ? "bg-bg shadow-xs" : "hover:bg-bg"}`} onClick={() => onOpen(task.taskId)}>
+              <button key={task.taskId} type="button" className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors ${activeTaskId === task.taskId ? "bg-bg shadow-xs" : "hover:bg-bg"}`} onMouseEnter={() => { void fetch(`/api/tasks/${encodeURIComponent(task.taskId)}`, { cache: "force-cache" }).catch(() => undefined); }} onClick={() => onOpen(task.taskId)}>
                 <span className="min-w-0 flex-1"><strong className="block truncate text-xs font-medium text-ink">{task.title || "未命名任务"}</strong><small className="text-[11px] text-ink-3">{railStatusLabel(status)}</small></span>
                 <span className={`size-1.5 flex-shrink-0 rounded-full ${railDotClass(status)}`} title={railStatusLabel(status)} aria-label={railStatusLabel(status)} />
               </button>
