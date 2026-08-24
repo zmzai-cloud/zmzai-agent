@@ -535,7 +535,10 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
   const { loggedIn: meLoggedIn, loading: meLoading } = useLoggedIn();
   if (!meLoading && !meLoggedIn && (routeTaskId || routeSessionId)) return <LoginGate title="登录后查看任务" />;
 
-  if (loading && !snapshot && sessionId) return <main className="workbench-loading">正在恢复任务…</main>;
+  // 统一加载态：路由带 taskId/sessionId 但任务详情/会话快照都还没就绪时，
+  // 直接显示一个加载屏，不再先渲染兜底假详情再闪"正在恢复任务…"。
+  const resolvingTask = Boolean(routeTaskId || routeSessionId) && !snapshot && !detailMatchesTask;
+  if (resolvingTask || (loading && !snapshot && sessionId)) return <main className="workbench-loading">正在打开任务…</main>;
   if (loadError) return <main className="workbench-loading">{loadError}</main>;
 
   const loginHref = process.env.NODE_ENV === "development" ? "/dev/login" : "https://auth.zmzai.cloud/login";
