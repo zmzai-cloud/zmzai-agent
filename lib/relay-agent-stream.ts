@@ -11,6 +11,8 @@ import {
   type Tool,
 } from "@earendil-works/pi-ai";
 
+import { randomUUID } from "node:crypto";
+
 import { getServerEnvironment } from "@/config/env";
 import { relayAgentContractVersion } from "@/lib/internal-contracts";
 
@@ -183,20 +185,26 @@ function streamFromRelay(model: Model<Api>, context: Context, options: SimpleStr
     }
 
     const reasoningEffort = relayReasoningEffort(options?.reasoning);
-    const requestBody = JSON.stringify({
-      userId: identity.userId,
-      taskRunId,
-      requestId: `${taskRunId}_${Date.now()}`,
-      model: model.id,
-      messages: toOpenAiMessages(context),
-      tools: toOpenAiTools(context.tools),
-      tool_choice: context.tools?.length ? "auto" : "none",
-      stream: true,
-      ...(options?.maxTokens ? { max_tokens: options.maxTokens } : {}),
-      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
-    });
 
     const fetchTurn = async (): Promise<Response> => {
+      // 每次尝试生成新的 requestId：relay 以 (caller, requestId) 幂等防重复
+      // 扣费，第一次请求（上游 5xx / 空流等）已在 relay 留痕并置为终态、已
+      // 释放预扣额度。重试若复用同一 requestId 会被 409 REQUEST_ALREADY_
+      // PROCESSED 直接拒绝，重试机制失效。新 requestId 不会双扣（失败态未
+      // 结算），尾部随机段避免同一毫秒内多次调用冲突。
+      const requestBody = JSON.stringify({
+        userId: identity.userId,
+        taskRunId,
+        requestId: `${taskRunId}_${Date.now()}_${randomUUID().slice(0, 8)}`,
+        model: model.id,
+        messages: toOpenAiMessages(context),
+        tools: toOpenAiTools(context.tools),
+        tool_choice: context.tools?.length ? "auto" : "none",
+        stream: true,
+        ...(options?.maxTokens ? { max_tokens: options.maxTokens } : {}),
+        ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
+      });
+
       let response: Response | null = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
