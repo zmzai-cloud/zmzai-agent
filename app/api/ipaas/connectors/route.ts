@@ -70,10 +70,17 @@ export async function POST(request: NextRequest) {
   if (platform === "feishu" && (!credentials.appId || !credentials.appSecret)) {
     return apiError("MISSING_CREDENTIALS", 400, "飞书连接器需要 appId 和 appSecret");
   }
+  if (platform === "email" && !credentials.apiUrl && !credentials.smtpHost) {
+    return apiError("MISSING_CREDENTIALS", 400, "邮件连接器需要 apiUrl+apiKey 或 SMTP 配置");
+  }
 
   const encryptedCredentials = encryptConnectorHeaders(credentials);
   const connectorId = `ipc_${randomUUID().replaceAll("-", "").slice(0, 20)}`;
-  const inboundWebhookUrl = platform === "feishu" ? `/api/ipaas/feishu/inbound/${connectorId}` : null;
+  const inboundWebhookUrl = platform === "feishu"
+    ? `/api/ipaas/feishu/inbound/${connectorId}`
+    : platform === "webhook"
+      ? `/api/ipaas/webhook/inbound/${connectorId}`
+      : null;
 
   const connector = await IpaasConnectorModel.create({
     connectorId, workspaceId, platform, name, encryptedCredentials,

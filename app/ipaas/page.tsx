@@ -63,6 +63,12 @@ export default function IpaasPage() {
   const [newAppId, setNewAppId] = useState("");
   const [newAppSecret, setNewAppSecret] = useState("");
   const [newVerificationToken, setNewVerificationToken] = useState("");
+  // email fields
+  const [newEmailApiUrl, setNewEmailApiUrl] = useState("");
+  const [newEmailApiKey, setNewEmailApiKey] = useState("");
+  const [newFromEmail, setNewFromEmail] = useState("");
+  // webhook fields
+  const [newWebhookSecret, setNewWebhookSecret] = useState("");
   const [newInbound, setNewInbound] = useState(true);
   const [newOutbound, setNewOutbound] = useState(true);
 
@@ -102,6 +108,14 @@ export default function IpaasPage() {
         credentials.appId = newAppId;
         credentials.appSecret = newAppSecret;
         if (newVerificationToken) credentials.verificationToken = newVerificationToken;
+      } else if (newPlatform === "email") {
+        if (!newEmailApiUrl && !newFromEmail) throw new Error("邮件至少需要 API URL 或发件人地址");
+        if (newEmailApiUrl) credentials.apiUrl = newEmailApiUrl;
+        if (newEmailApiKey) credentials.apiKey = newEmailApiKey;
+        if (newFromEmail) credentials.fromEmail = newFromEmail;
+      } else if (newPlatform === "webhook") {
+        if (newWebhookSecret) credentials.secret = newWebhookSecret;
+        else credentials.secret = "";
       }
       await json("/api/ipaas/connectors", {
         method: "POST",
@@ -120,6 +134,10 @@ export default function IpaasPage() {
       setNewAppId("");
       setNewAppSecret("");
       setNewVerificationToken("");
+      setNewEmailApiUrl("");
+      setNewEmailApiKey("");
+      setNewFromEmail("");
+      setNewWebhookSecret("");
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "创建失败");
@@ -236,6 +254,32 @@ export default function IpaasPage() {
                 </>
               )}
 
+              {newPlatform === "email" && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium">邮件 API URL</label>
+                    <Input value={newEmailApiUrl} onChange={(e) => setNewEmailApiUrl(e.target.value)} placeholder="https://api.sendgrid.com/v3/mail/send" className="mt-1 max-w-sm" />
+                    <p className="mt-1 text-xs text-muted-foreground">支持 SendGrid / Mailgun 等 HTTP API，或留空使用 SMTP</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">API Key <span className="text-muted-foreground">(可选)</span></label>
+                    <Input type="password" value={newEmailApiKey} onChange={(e) => setNewEmailApiKey(e.target.value)} placeholder="邮件服务 API Key" className="mt-1 max-w-sm" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">发件人地址</label>
+                    <Input value={newFromEmail} onChange={(e) => setNewFromEmail(e.target.value)} placeholder="noreply@example.com" className="mt-1 max-w-sm" />
+                  </div>
+                </>
+              )}
+
+              {newPlatform === "webhook" && (
+                <div>
+                  <label className="text-sm font-medium">签名密钥 <span className="text-muted-foreground">(可选)</span></label>
+                  <Input type="password" value={newWebhookSecret} onChange={(e) => setNewWebhookSecret(e.target.value)} placeholder="用于验证入站 Webhook 签名" className="mt-1 max-w-sm" />
+                  <p className="mt-1 text-xs text-muted-foreground">留空则不验证签名。出站请求也会用此密钥签名。</p>
+                </div>
+              )}
+
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={newInbound} onChange={(e) => setNewInbound(e.target.checked)} className="rounded" />
@@ -285,11 +329,11 @@ export default function IpaasPage() {
                       {connector.lastError && (
                         <div className="mt-1 text-xs text-destructive">错误: {connector.lastError}</div>
                       )}
-                      {connector.inboundEnabled && connector.platform === "feishu" && (
+                      {connector.inboundEnabled && (connector.platform === "feishu" || connector.platform === "webhook") && (
                         <div className="mt-2">
-                          <span className="text-xs text-muted-foreground">事件回调 URL: </span>
+                          <span className="text-xs text-muted-foreground">入站 URL: </span>
                           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                            {typeof window !== "undefined" ? window.location.origin : ""}/api/ipaas/feishu/inbound/{connector.connectorId}
+                            {typeof window !== "undefined" ? window.location.origin : ""}{connector.platform === "feishu" ? `/api/ipaas/feishu/inbound/${connector.connectorId}` : `/api/ipaas/webhook/inbound/${connector.connectorId}`}
                           </code>
                         </div>
                       )}

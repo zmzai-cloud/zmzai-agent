@@ -4,9 +4,13 @@
 
 import type { Connector, IpaasPlatform } from "./types";
 import { feishuConnector } from "./feishu-adapter";
+import { emailConnector } from "./email-connector";
+import { webhookConnector } from "./webhook-connector";
 
 const registry = new Map<IpaasPlatform, Connector>();
 registry.set("feishu", feishuConnector);
+registry.set("email", emailConnector);
+registry.set("webhook", webhookConnector);
 
 export function getConnector(platform: IpaasPlatform): Connector | undefined {
   return registry.get(platform);
