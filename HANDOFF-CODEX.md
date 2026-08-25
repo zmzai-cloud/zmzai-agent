@@ -6,7 +6,7 @@
 
 ## 0. 一句话现状
 
-框架 M0–M5 已全部实现并大部分上生产：a.zmzai.cloud 跑的是新框架（plan/build 已下线）；M5 把框架抽成了独立包 `packages/agent-framework`（@zmzai/agent-framework）。**当前有一批 M5 改动未提交（39 个文件），且用户要求后续发布 npm。**
+框架 M0–M5 已全部实现并上生产：a.zmzai.cloud 跑的是新框架（plan/build 已下线）；M5 把框架抽成了独立包 `packages/agent-framework`（@zmzai/agent-framework，已发布 npm + git tag v0.1.0 + GitHub Release）。**当前全部待办（P0–P3）已闭环，无需接手动作。**
 
 ## 1. 仓库布局
 
@@ -43,25 +43,11 @@ zmzai-agent/（git 仓库，main 分支，remote: Ulanxx/zmzai-agent，push 触�
 | **M2 Runner** | SessionRunner（PI 适配层）、7 内置工具（read/glob/grep/write/edit/bash/todo）、agent presets（default/readonly/explore/general）、HTTP 路由 | ✅ 上生产 |
 | **M3 产品切换** | /fw 工作台（parts 渲染、内联审批、todo、产物预览）、旧 plan/build 全下线（30+ 文件删除）、审计页重写为 FW 事件源、lease-recovery | ✅ 上生产（commit ea5f65d） |
 | **M4 框架化** | task 子代理、.zmzai/agents/*.md 自定义 agent、compaction、JSONL store | ✅ 上生产（commit 3b73bcf + 2 个 parentId 修复） |
-| **M5 抽包** | packages/agent-framework 独立包、5 注入接口、createServer、CLI、OpenAPI、examples | ✅ 代码级完成，**未提交未部署** |
+| **M5 抽包** | packages/agent-framework 独立包、5 注入接口、createServer、CLI、OpenAPI、examples | ✅ 上生产（commit 7309f49，lockfile 修复 0907a75） |
 
-## 3. 当前未提交改动（39 文件）— Codex 接手第一件事
+## 3. 当前未提交改动（39 文件）— ✅ 已提交部署（2026-08-25）
 
-`git status` 显示 39 个未提交文件，全是 M5。**必须先提交，否则产品无法部署 M5**：
-
-- 新增：`packages/`（整个包）、`framework/core/events/mongo-event-log.ts`、M5 spec
-- 修改/删除：`framework/core/*` 大量纯模块删除（改由包提供）+ 产品兼容层改造
-- 关键文件已改：`framework/server/context.ts`（产品组装点）、`instrumentation.ts`（lease-recovery 接线）、`tsconfig.json`/`vitest.config.mts`/`next.config.ts`（alias 指向包源码）、`pnpm-workspace.yaml`（声明 packages/*）
-
-**提交前验证**（本地已全绿，放心提交）：
-```bash
-npm test                # 114 通过（产品）
-cd packages/agent-framework && npx vitest run   # 77 通过（包）
-npx tsc --noEmit        # 干净
-npx next build          # 成功，路由齐全
-```
-
-**提交后**：push main → GitHub Actions 自动部署到 a.zmzai.cloud（香港 self-hosted runner）。产品行为不变（路由/前端零改动，只改内部 import），但建议按验收清单跑一遍生产冒烟。
+原 M5 未提交的 39 个文件已在 P0 一并提交（7309f49 + 0907a75），push main 触发 GitHub Actions 自动部署到 a.zmzai.cloud，quality + deploy 全绿，生产冒烟通过（/fw 200、/ → 307、旧路由 404）。
 
 ## 4. 待办清单（按优先级）
 
@@ -121,9 +107,9 @@ npx next build          # 成功，路由齐全
 
 - 用户是 zmzai 创始人（mu.zhi@yingdao.com），中文沟通，关注"框架能独立分发"。
 - 已确认决策：session 强绑 workspace、子代理继承父 workspaceId、title 便宜模型异步生成、运行中输入 FIFO 排队（全部在 spec §13）。
-- **用户要求后续提醒发布 npm**（已记 memory：publish-npm-pending）。
+- **用户已要求发布 npm 并完成**（@zmzai/agent-framework@0.1.0，见 P1）。
 - 生产部署 = push main 自动触发；验收方法 = HK 服务器 SSH（root@149.88.84.189）+ mongosh 铸造 30 分钟测试 session（见 memory hk-server-ssh + 验收清单）。
-- 上一轮对话结束时我问过"commit + push M5？"，用户转交给 Codex——**所以提交部署 M5 是当前最优先，用户期待 Codex 接手**。
+- 上一轮对话结束时我问过"commit + push M5？"，用户转交给 Codex——**M5 提交部署已在 P0 完成（7309f49），当前无待办。**
 
 ## 8. 下一步建议（Codex 接手顺序）
 
