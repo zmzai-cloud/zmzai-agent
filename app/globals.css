@@ -1,81 +1,14 @@
 @import "tailwindcss";
+@import "@zmzai/theme/tokens";
+@import "@zmzai/theme/fonts";
 @source "../app/**/*.{ts,tsx}";
 @source "../framework/**/*.{ts,tsx}";
 @source "../components/**/*.{ts,tsx}";
 @source "../node_modules/@zmzai/theme/src/**/*.{ts,tsx}";
 
-/* zmzai v2 — Monochrome Impact. 纯白底 + 纯黑字 + MiSans.
-   Token source: @zmzai/theme. Inlined here because @tailwindcss/postcss
-   doesn't resolve package-path @import. */
-
-@theme {
-  /* zmzai.cloud 主应用主题（hub tokens.css 同源，Hallmark Study 锁定）：
-     纯白 + 荧光绿（与 hub 统一），衬线正文字体 + 等宽系统字体，锐利编辑风圆角。 */
-  --color-bg:            oklch(0.995 0.002 90);
-  --color-surface:       oklch(0.98 0.004 90);
-  --color-surface-2:     oklch(0.95 0.006 88);
-  --color-ink:           oklch(0.15 0.010 30);
-  --color-ink-2:         oklch(0.50 0.012 55);
-  --color-ink-3:         oklch(0.55 0.012 55);
-  --color-line:          oklch(0.90 0.005 88);
-  --color-line-strong:   oklch(0.15 0.010 30);
-  --color-accent:        oklch(0.78 0.220 142);
-  --color-accent-ink:    oklch(0.15 0.010 30);
-  --color-success:       oklch(0.72 0.180 145);
-  --color-danger:        oklch(0.55 0.200 25);
-  --color-warning:       oklch(0.80 0.150 90);
-  --color-dark-bg:       #0A0A0A;
-  --color-dark-surface:  #141414;
-  --color-dark-ink:      #FAFAFA;
-  --color-dark-line:     #27272A;
-
-  --font-sans: "MiSans", "Noto Serif SC", "Source Han Serif SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
-
-  --radius-sm:    2px;
-  --radius:       2px;
-  --radius-lg:    4px;
-  --radius-xl:    6px;
-  --radius-pill:  9999px;
-
-  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  /* Backward-compat aliases (v1 → v2) */
-  --color-paper:          oklch(0.995 0.002 90);
-  --color-muted:          oklch(0.50 0.012 55);
-  --color-rule:           oklch(0.15 0.010 30);
-  --color-surface-strong: oklch(0.95 0.006 88);
-  --color-accent-strong:  oklch(0.68 0.220 142);
-  --animate-dur-fast:     150ms;
-  --animate-dur-base:     250ms;
-  --animate-dur-slow:     500ms;
-  --radius-card:          var(--radius);
-  --radius-input:         var(--radius-sm);
-}
-
-/* MiSans @font-face */
-@font-face {
-  font-family: 'MiSans';
-  src: url('https://cdn.jsdelivr.net/gh/dsrkafuu/misans@main/raw/Normal/woff2/MiSans-Regular.woff2') format('woff2');
-  font-weight: 400; font-style: normal; font-display: swap;
-}
-@font-face {
-  font-family: 'MiSans';
-  src: url('https://cdn.jsdelivr.net/gh/dsrkafuu/misans@main/raw/Normal/woff2/MiSans-Medium.woff2') format('woff2');
-  font-weight: 500; font-style: normal; font-display: swap;
-}
-@font-face {
-  font-family: 'MiSans';
-  src: url('https://cdn.jsdelivr.net/gh/dsrkafuu/misans@main/raw/Normal/woff2/MiSans-Semibold.woff2') format('woff2');
-  font-weight: 600; font-style: normal; font-display: swap;
-}
-@font-face {
-  font-family: 'MiSans';
-  src: url('https://cdn.jsdelivr.net/gh/dsrkafuu/misans@main/raw/Normal/woff2/MiSans-Bold.woff2') format('woff2');
-  font-weight: 700; font-style: normal; font-display: swap;
-}
+/* zmzai v2 — 纯白底 + 纯黑字 + MiSans.
+   Token 统一来自 @zmzai/theme（v0.6.0 起纯白+荧光绿，与 zmzai.cloud 主应用同源），
+   不再内联 @theme 与 @font-face。 */
 
 /* zmzai v2 — Monochrome Impact. 纯白底 + 纯黑字 + MiSans.
    Token source: @zmzai/theme. Old v1 token names aliased in theme.css. */
