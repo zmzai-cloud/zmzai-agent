@@ -89,17 +89,23 @@ const initialLive: LiveState = {
 
 function liveFromEvents(events: PersistedFrameworkEvent[] | undefined): LiveState {
   let live = { ...initialLive };
+  let prevStatus: SessionStatus | undefined;
   for (const event of events ?? []) {
     const data = event.data as Record<string, unknown>;
     if (event.type === "session.status") {
       const status = data.status as SessionStatus;
-      live = { ...live, status, streamState: status === "idle" ? "idle" : live.streamState };
+      // 新 run 开始（idle → running）：清空上个 run 的执行计划残留，
+      // 避免失败重试后旧 todos 与新 run 结果混在一起展示。
+      const startedNewRun = status === "running" && prevStatus === "idle";
+      live = { ...live, status, streamState: status === "idle" ? "idle" : live.streamState, ...(startedNewRun ? { todos: [] } : {}) };
+      prevStatus = status;
       if (status === "idle") {
         live.pendingPermission = null;
         live.todos = live.todos.map((item) => (item.status === "pending" || item.status === "in_progress" ? { ...item, status: "cancelled" as const } : item));
       }
     } else if (event.type === "session.error") {
       live = { ...live, status: "idle", error: String(data.message ?? "任务执行失败") };
+      prevStatus = "idle";
     } else if (event.type === "todo.updated") {
       live = { ...live, todos: data.todos as TodoItem[] };
     } else if (event.type === "permission.asked") {
@@ -226,6 +232,8 @@ export function useFrameworkSession(sessionId: string | null) {
           // A session error belongs to one run. Once a new run starts, do not
           // keep rendering the previous run's failure under its new response.
           const errorCleared = status === "running" || status === "waiting_permission" || status === "waiting_input" ? { error: null } : {};
+          // 新 run 开始（idle → running）：清空上个 run 的执行计划残留。
+          const startedNewRun = status === "running" && current.status === "idle";
           // Leftover projection folding: while idle, no run is alive, so a
           // pending permission card or in-flight todos are leftovers from an
           // interrupted run — fold them instead of rendering them forever.
@@ -238,7 +246,7 @@ export function useFrameworkSession(sessionId: string | null) {
               todos: current.todos.map((item) => (item.status === "pending" || item.status === "in_progress" ? { ...item, status: "cancelled" as const } : item)),
             };
           }
-          return { ...current, status, ...errorCleared };
+          return { ...current, status, ...errorCleared, ...(startedNewRun ? { todos: [] } : {}) };
         }
         if (type === "session.error") return { ...current, error: (frame as { message: string }).message, status: "idle" };
         if (type === "todo.updated") return { ...current, todos: (frame as { todos: TodoItem[] }).todos };

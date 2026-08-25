@@ -801,8 +801,8 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
                   {collapsedLastAssistant && <MessageView entry={collapsedLastAssistant} hideTools sessionIdle />}
                 </>
               ) : messages.length ? messages.map((entry, index) => <MessageView key={Array.isArray(entry) ? `assistant-${index}-${entry[0]?.info.id}` : entry.info.id} entry={entry} hideTools={live.todos.length > 0} sessionIdle={live.status === "idle"} />) : <EmptyState title="任务准备完成" description="开始补充你的要求。" />}
-              {shouldCollapseConversation && messages.length > 2 && <button type="button" className="mx-5 text-center text-xs text-ink-3 hover:text-ink" onClick={() => setConversationExpanded(true)}>↑ 展开上方 {messages.length - 2} 条消息</button>}
-              {(live.todos.length > 0 || taskTools.length > 0) && <PlanCard todos={live.todos} taskTools={taskTools} onAction={(actionName, index) => void planAction(actionName, index)} onAdjust={adjustPlan} busyIndex={planBusyIndex} />}
+              {(shouldCollapseConversation && messages.length > 2) && <button type="button" className="mx-5 text-center text-xs text-ink-3 hover:text-ink" onClick={() => setConversationExpanded(true)}>↑ 展开上方 {messages.length - 2} 条消息</button>}
+              {!taskSucceeded && (live.todos.length > 0 || taskTools.length > 0) && <PlanCard todos={live.todos} taskTools={taskTools} onAction={(actionName, index) => void planAction(actionName, index)} onAdjust={adjustPlan} busyIndex={planBusyIndex} />}
               {qualityResult && <QualityCard result={qualityResult} />}
               {live.pendingPermission && <PermissionCard request={live.pendingPermission as PermissionRequest} busy={replying} onReply={(reply, feedback) => void replyPermission(reply, feedback)} />}
               <SubagentCard subagents={taskDetail?.subagents ?? []} onRetry={(id) => void retrySubagent(id)} retryingId={retryingSubagentId} />
