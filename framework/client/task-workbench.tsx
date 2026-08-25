@@ -387,6 +387,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
   const [isNarrow, setIsNarrow] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [followScroll, setFollowScroll] = useState(true);
+  const [conversationExpanded, setConversationExpanded] = useState(false);
 
   const taskId = routeTaskId ?? resolvedTaskId;
   const detailMatchesTask = taskDetail?.task.taskId === taskId;
@@ -474,7 +475,13 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
     if (element && followScroll) element.scrollTop = element.scrollHeight;
   }, [snapshot?.messages, live.todos, followScroll]);
 
-  useEffect(() => { setNavigatingToTask(null); }, [routeTaskId, routeSessionId]);
+  // 任务完成后自动收起对话流，用户可手动展开。
+  const taskSucceeded = latestRun?.status === "succeeded" || task?.status === "succeeded";
+  const shouldCollapseConversation = taskSucceeded && messages.length > 2 && !conversationExpanded;
+  const collapsedFirstUser = shouldCollapseConversation ? messages.find((m) => !Array.isArray(m) && m.info.role === "user") ?? null : null;
+  const collapsedLastAssistant = shouldCollapseConversation ? messages.filter((m) => Array.isArray(m) ? m.some((item) => item.info.role === "assistant") : m.info.role === "assistant").slice(-1)[0] ?? null : null;
+
+  useEffect(() => { setNavigatingToTask(null); setConversationExpanded(false); }, [routeTaskId, routeSessionId]);
 
   // 状态驱动的快捷指令：失败原因/质量检查失败项/审批状态变了就重新生成。
   useEffect(() => {
@@ -784,7 +791,17 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
 
           <div className="conversation-scroll" ref={scrollRef} onScroll={() => { const element = scrollRef.current; if (element) setFollowScroll(element.scrollHeight - element.scrollTop - element.clientHeight < 160); }}>
             <div className="flex flex-col gap-3">
-              {messages.length ? messages.map((entry, index) => <MessageView key={Array.isArray(entry) ? `assistant-${index}-${entry[0]?.info.id}` : entry.info.id} entry={entry} hideTools={live.todos.length > 0} sessionIdle={live.status === "idle"} />) : <EmptyState title="任务准备完成" description="开始补充你的要求。" />}
+              {shouldCollapseConversation ? (
+                <>
+                  {collapsedFirstUser && <MessageView entry={collapsedFirstUser} hideTools sessionIdle />}
+                  <button type="button" className="mx-5 flex items-center justify-center gap-2 rounded-sm border border-line bg-surface px-3 py-2 text-xs text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink" onClick={() => setConversationExpanded(true)}>
+                    <Icon name="chevron-down" size={12} />
+                    <span>展开完整对话（{messages.length} 条消息 · {formatTokenCount(sessionTokenTotal)} tokens）</span>
+                  </button>
+                  {collapsedLastAssistant && <MessageView entry={collapsedLastAssistant} hideTools sessionIdle />}
+                </>
+              ) : messages.length ? messages.map((entry, index) => <MessageView key={Array.isArray(entry) ? `assistant-${index}-${entry[0]?.info.id}` : entry.info.id} entry={entry} hideTools={live.todos.length > 0} sessionIdle={live.status === "idle"} />) : <EmptyState title="任务准备完成" description="开始补充你的要求。" />}
+              {shouldCollapseConversation && messages.length > 2 && <button type="button" className="mx-5 text-center text-xs text-ink-3 hover:text-ink" onClick={() => setConversationExpanded(true)}>↑ 展开上方 {messages.length - 2} 条消息</button>}
               {(live.todos.length > 0 || taskTools.length > 0) && <PlanCard todos={live.todos} taskTools={taskTools} onAction={(actionName, index) => void planAction(actionName, index)} onAdjust={adjustPlan} busyIndex={planBusyIndex} />}
               {qualityResult && <QualityCard result={qualityResult} />}
               {live.pendingPermission && <PermissionCard request={live.pendingPermission as PermissionRequest} busy={replying} onReply={(reply, feedback) => void replyPermission(reply, feedback)} />}

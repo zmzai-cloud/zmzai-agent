@@ -41,6 +41,14 @@ export function LoginGate({ title = "登录后继续" }: { title?: string }) {
   );
 }
 
+/** 状态优先级：需要关注的排前面，已完成的放最后。 */
+function railStatusPriority(status: string): number {
+  if (status === "running" || status === "active" || status === "waiting_input" || status === "waiting_approval") return 0;
+  if (status === "failed") return 1;
+  if (status === "created" || status === "paused") return 2;
+  return 3; // succeeded, cancelled, draft
+}
+
 function railStatusLabel(status: string) {
   return ({ succeeded: "已完成", failed: "需要处理", active: "进行中", running: "执行中", waiting_input: "等待补充", waiting_approval: "等待审批", paused: "已暂停", cancelled: "已取消", draft: "草稿", created: "准备中" } as Record<string, string>)[status] ?? status;
 }
@@ -115,15 +123,17 @@ export function WorkbenchRail({ tasks, activeTaskId, onNew, onOpen }: { tasks: R
           {tasks.length > 0 && <Badge variant="outline" size="sm">{tasks.length}</Badge>}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {tasks.length ? tasks.slice(0, 20).map(({ task, latestRun }) => {
-            const status = latestRun?.status ?? task.status;
-            return (
+          {tasks.length ? tasks
+            .map(({ task, latestRun }) => ({ task, latestRun, status: latestRun?.status ?? task.status }))
+            .sort((a, b) => railStatusPriority(a.status) - railStatusPriority(b.status))
+            .slice(0, 20)
+            .map(({ task, status }) => (
               <button key={task.taskId} type="button" className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors ${activeTaskId === task.taskId ? "bg-bg shadow-xs" : "hover:bg-bg"}`} onMouseEnter={() => { void fetch(`/api/tasks/${encodeURIComponent(task.taskId)}`, { cache: "force-cache" }).catch(() => undefined); }} onClick={() => onOpen(task.taskId)}>
                 <span className="min-w-0 flex-1"><strong className="block truncate text-xs font-medium text-ink">{task.title || "未命名任务"}</strong><small className="text-[11px] text-ink-3">{railStatusLabel(status)}</small></span>
                 <span className={`size-1.5 flex-shrink-0 rounded-full ${railDotClass(status)}`} title={railStatusLabel(status)} aria-label={railStatusLabel(status)} />
               </button>
-            );
-          }) : <p className="px-2.5 py-2 text-xs text-ink-3">完成的任务会出现在这里。</p>}
+            ))
+            : <p className="px-2.5 py-2 text-xs text-ink-3">完成的任务会出现在这里。</p>}
         </div>
       </div>
 
