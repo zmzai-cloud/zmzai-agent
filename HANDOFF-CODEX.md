@@ -65,27 +65,31 @@ npx next build          # 成功，路由齐全
 
 ## 4. 待办清单（按优先级）
 
-### P0 — 提交 M5 并部署（用户等待中）
-1. commit M5（message 建议：`feat: extract framework into @zmzai/agent-framework package (M5)`）
-2. push main，盯 Actions（quality + deploy）
-3. 生产冒烟：`/fw` 200、`/`→307、旧路由 404（对照 docs/superpowers/plans/2026-08-11-fw-protocol-acceptance.md）
+### P0 — 提交 M5 并部署（✅ 已完成）
+1. commit M5（7309f49，lockfile 修复 0907a75）
+2. push main，GitHub Actions quality + deploy 全绿
+3. 生产冒烟通过（/fw 200、/ → 307、旧路由 404）
 
-### P1 — 发布 npm（用户明确要求，见 memory publish-npm-pending）
-- `@zmzai/agent-framework` 发布到公共 npm。当前 version 0.1.0。
-- 前置：npm 账号/token（.npmrc）、`npm run build` 产出 dist、`files: ["dist","openapi.yaml"]` 已配好、package.json `bin` 已配
-- 建议流程：`npm publish --access public`；可选 git tag + GitHub Release
-- ⚠️ 注意：包目前 `dependencies` 含 `@earendil-works/pi-agent-core@0.84.1`（私有 scoped，需确认可被 npm 解析或改成 peerDependencies）
+### P1 — 发布 npm（✅ 已完成，2026-08-25）
+- `@zmzai/agent-framework@0.1.0` 已发布到公共 npm（126 文件，tag latest，public access）
+- 依赖 `@earendil-works/pi-agent-core@0.84.1` / `@earendil-works/pi-ai@0.84.1` 均为**公开包**，无需改 peerDependencies（发布前 npm view 可解析）
+- 前置条件（dist/openapi.yaml/bin）此前已全部就绪；发布时 ~/.npmrc token 失效（401），由用户提供新 token 后一次成功
+- 可选后续：git tag + GitHub Release（2026-08-25 已执行：v0.1.0 tag + Release）
 
-### P2 — 框架遗留（spec §11.1 记录，非阻塞）
-- **title 异步生成**：`streamOneText` 已就绪（compaction.ts），未接 runner（session 创建后便宜模型生成标题）
-- **webfetch 工具**：spec 列了但没实现（标记 experimental 即可，或直接实现）
-- **JSONL 后端的 workspace facade**：FW_MODE=local 时 session 用 JSONL，但 workspace 仍走 Mongo（包已带 createFsWorkspaceFiles，产品未接 local 模式）
-- **子代理嵌套端到端单测**：单进程双 PI 循环时序脆弱，只验证了确定性前置；嵌套完成路径靠生产真模型验证过
+### P2 — 框架遗留（✅ 全部完成，2026-08-25）
+- **title 异步生成**：`lib/fw-session-title.ts`（maybeGenerateSessionTitle）接线 sessions POST + prompt POST；defaultRelayModel=deepseek-v4-flash；默认值守卫防覆盖用户改过的标题；失败静默降级
+- **webfetch 工具**：`packages/agent-framework/src/core/tools/webfetch.ts` 实现（SSRF 私网段拦截 + 256KB 上限 + 15s 超时 + htmlToText，experimental 标记），注册进 builtinTools，11 个单测
+- **JSONL 后端的 workspace facade**：`framework/server/context.ts` FW_MODE=local 全本地链路（store=JSONL、workspace=FS、sandbox=subprocess、eventLog=memory、agents=FS 读取）；修复 local 模式 runner/API store 分裂隐藏 bug（mongoSessionStore → defaultStore）
+- **子代理嵌套端到端单测**：runner.test.ts 新增 task tool end-to-end 测试（faux 三响应驱动父子嵌套，验证 child session/subtask part/父总结）；task 工具参数名是 `subagent_type`，builtinDefaults `"*": "allow"` 下默认免审批
 - **完整 TUI**：spec 非目标（只有 CLI serve/run）
 
-### P3 — 生产数据清理（可选，需用户确认）
-- 旧协议 8 个 collection（TaskRun/TaskEvent/ChangeProposal/ExecutionProposal/ExecutionGrant/ToolCall/ArtifactReference/AgentSession）代码已删，生产 Mongo 数据保留未 drop（可回退）。确认无价值后可手动 drop
-- 生产有 3 个测试 fw session + 1 个 GridFS 产物残留（M3/M4 验收留下）
+### P3 — 生产数据清理（✅ 已完成，2026-08-25，用户确认后执行）
+- 8 个旧 protocol collection 全部 drop：zmzaiagenttaskruns(35)/taskevents(13007)/changeproposals(3)/executionproposals(0)/executiongrants(0)/toolcalls(19)/artifactreferences(4)/agentsessions(11)
+- fw sessions 级联删除 15 个（含 events 1214 / messages 182 / parts 493 / checkpoints 166 / runs 14 / sandbox 索引 13）——实际测试残留远多于最初记录的 3 个
+- sandbox 产物桶（GridFS `sandboxArtifacts.files/chunks` 14/14）drop；默认 fs 桶本就为空
+- ⚠️ 保留：zmzaiagenttasks（sessionId=null，任务定义）、zmzaiframeworkseqs（计数器）、workspaces/workspacefiles/revisions、zmzaiagentruns 相关 run 系统表（若再建 session 会重新生成）
+- 操作通道：HK 服务器完整 SSH（~/.ssh/id_rsa，hk-deploy-key 是受限 deploy wrapper）+ mongosh 2.9.2
+- 清理脚本留存于 zmzai-relay/scripts/：reclassify-failed-attempts.mongosh.js + cleanup-u4-production.mongosh.js
 
 ## 5. 关键架构决策（避免 Codex 踩坑）
 
@@ -124,8 +128,6 @@ npx next build          # 成功，路由齐全
 ## 8. 下一步建议（Codex 接手顺序）
 
 1. 读本文件 + `docs/superpowers/specs/2026-08-11-pi-agent-framework-v0-design.md`（§11.1 实现状态）
-2. `git status` 核对 39 文件 → commit M5 → push（盯 Actions）
-3. 生产冒烟（对照验收清单）
-4. 处理 P1 npm 发布（先确认 pi-agent-core 依赖可解析；询问用户 registry 配置）
-5. 问用户 P3 是否清理旧 collection
-6. 有疑问找 ZCode 的 memory：`/Users/ulanxx/.zcode/cli/memories/projects/zmzai-7a5fdbd75a13cbb4/memory/`（pi-opencode-framework.md 最全）
+2. P0/P1/P2/P3 已全部完成（2026-08-25）；v0.1.0 tag + GitHub Release 已打
+3. 生产数据清理后若需回看，脚本在 zmzai-relay/scripts/（cleanup-u4-production.mongosh.js）
+4. 有疑问找 ZCode 的 memory：`/Users/ulanxx/.zcode/cli/memories/projects/zmzai-7a5fdbd75a13cbb4/memory/`（pi-opencode-framework.md 最全）

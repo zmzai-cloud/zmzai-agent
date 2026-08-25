@@ -9,6 +9,7 @@ import { ensureRunForPrompt } from "@/lib/task-run-control";
 import { RunModel } from "@/models/run";
 import { TaskModel } from "@/models/task";
 import { canRunProject, getProjectAccess } from "@/lib/project-access";
+import { maybeGenerateSessionTitle } from "@/lib/fw-session-title";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,5 +54,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
     ...(parsed.data.agent ? { agent: parsed.data.agent } : {}),
     ...(parsed.data.images?.length ? { images: parsed.data.images } : {}),
   });
+  // spec §13.2：先建会话后发首条 prompt 的场景，标题也异步生成（默认值守卫防重复）
+  void maybeGenerateSessionTitle({ sessionId, prompt: parsed.data.text });
   return NextResponse.json({ accepted: true, queued: result.queued, task: control.task, run: control.run }, { status: 202, headers: { "cache-control": "no-store" } });
 }

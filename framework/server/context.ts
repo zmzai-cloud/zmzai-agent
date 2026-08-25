@@ -1,8 +1,8 @@
 import { AgentRegistry, SessionRunner, type SessionInfo, type ModelRef, type ToolContext, type PermissionEngine, type Ruleset } from "@zmzai/agent-framework";
-import { loadCustomAgents } from "@zmzai/agent-framework";
+import { loadCustomAgents, createFsWorkspaceFiles, createSubprocessSandbox, createMemoryEventLog } from "@zmzai/agent-framework";
 import { productEventLog } from "@/framework/core/events/product-event-log";
-import { mongoSessionStore } from "@/framework/core/session/mongo-store";
 import { createMongoWorkspaceFiles, createWorkspaceAggregateFiles } from "@/framework/core/tools/mongo-workspace";
+import { defaultStore } from "@/framework/core/runtime/runner";
 import { createRelayModel, createRelayStreamFunction } from "@/lib/relay-agent-stream";
 import { buildExecSnapshot } from "@/lib/sandbox-snapshot";
 import { runSandboxCommandAndStream } from "@/lib/sandbox-execution";
@@ -22,17 +22,26 @@ import { ProjectContextItemModel } from "@/models/project-context-item";
 
 const globalHolder = globalThis as typeof globalThis & { __zmzaiFrameworkRunner?: SessionRunner | null };
 
+/** FW_MODE=local：全本地演示链路（零 Mongo/relay 依赖）。API 侧 defaultStore
+ *  已切 JSONL，这里把 workspace/sandbox/eventLog/agents 一并切到本地实现，
+ *  否则 session 在 JSONL 而 runner 在 Mongo，链路跑不通。 */
+const localMode = process.env.FW_MODE?.trim() === "local";
+const localWorkspaceRoot = process.env.FW_WORKSPACE_DIR?.trim() || "./.fw-workspace";
+const localWorkspaceFiles = () => createFsWorkspaceFiles({ root: localWorkspaceRoot });
+
 function getOrCreateRunner(): SessionRunner {
   if (globalHolder.__zmzaiFrameworkRunner) return globalHolder.__zmzaiFrameworkRunner;
 
   const runner = new SessionRunner({
-    store: mongoSessionStore,
+    store: defaultStore,
     registry: new AgentRegistry(),
-    eventLog: productEventLog,
+    eventLog: localMode ? createMemoryEventLog() : productEventLog,
     streamFnFor: (session) => createRelayStreamFunction({ userId: session.userId, taskRunId: () => activeRunIdForSession(session.id) }),
     modelFor: (ref: ModelRef) => createRelayModel(ref.modelId),
-    workspaceFor: (session) => createMongoWorkspaceFiles({ userId: session.userId, workspaceId: session.workspaceId, sessionId: session.id }),
-    sandbox: {
+    workspaceFor: localMode ? localWorkspaceFiles : (session) => createMongoWorkspaceFiles({ userId: session.userId, workspaceId: session.workspaceId, sessionId: session.id }),
+    sandbox: localMode
+      ? createSubprocessSandbox()
+      : {
       buildSnapshot: async (input) => (await buildExecSnapshot({ userId: input.userId, workspaceId: input.workspaceId, runId: input.runId })).snapshot,
       run: async (input) => {
         const result = await runSandboxCommandAndStream({
@@ -66,7 +75,9 @@ function getOrCreateRunner(): SessionRunner {
         };
       },
     },
-    leaseStore: {
+    leaseStore: localMode
+      ? undefined
+      : {
       stamp: async (sessionId, owner, expiresAt) => {
         await FrameworkSessionModel.updateOne({ sessionId }, { $set: { leaseOwner: owner, leaseExpiresAt: expiresAt } }).catch(() => undefined);
       },
@@ -75,13 +86,17 @@ function getOrCreateRunner(): SessionRunner {
       },
     },
     sessionRuleTtlMs: 24 * 60 * 60_000,
-    loadWorkspaceAgents: async (session: SessionInfo) => {
+    loadWorkspaceAgents: localMode
+      ? async () => (await loadCustomAgents(localWorkspaceFiles())).agents
+      : async (session: SessionInfo) => {
       // .zmzai/agents/*.md 是 workspace 级资产（跨会话共享），走聚合视图而非会话隔离视图
       const workspace = createWorkspaceAggregateFiles(session.workspaceId);
       const { agents } = await loadCustomAgents(workspace);
       return agents;
     },
-    agentResolver: {
+    agentResolver: localMode
+      ? undefined
+      : {
       // Workspace = 智能体：从 workspace 文档读 prompt/steps/permission，
       // 返回 ResolvedAgent。不再走 AgentVersion（已废弃）。
       resolve: async (session) => {

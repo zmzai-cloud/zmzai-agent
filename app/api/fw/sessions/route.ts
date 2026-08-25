@@ -15,6 +15,7 @@ import { RunModel } from "@/models/run";
 import { TaskModel } from "@/models/task";
 import { canRunProject, getProjectAccess } from "@/lib/project-access";
 import { ProjectBudgetExceededError } from "@/lib/project-budget";
+import { maybeGenerateSessionTitle } from "@/lib/fw-session-title";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,6 +95,8 @@ export async function POST(request: NextRequest) {
 
   if (parsed.data.prompt) {
     await getFrameworkRunner().prompt(session.id, { text: parsed.data.prompt });
+    // spec §13.2：便宜模型异步生成标题，session.updated 覆盖默认截断标题
+    void maybeGenerateSessionTitle({ sessionId: session.id, prompt: parsed.data.prompt });
   }
   return NextResponse.json({ session, task, run, replayed: claim.replayed }, { status: 201, headers: { "cache-control": "no-store" } });
 }
