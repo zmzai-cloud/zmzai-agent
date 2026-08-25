@@ -117,4 +117,41 @@ describe("relay stream empty-response handling", () => {
     const done = events.find((event) => event.type === "done") as { message: { usage: { input: number; totalTokens: number } } } | undefined;
     expect(done?.message.usage.totalTokens).toBe(0);
   });
+
+  it("uses a fresh requestId when retrying after a relay 5xx so the idempotency guard cannot reject the retry", async () => {
+    // 回归：relay 对已留痕的 requestId 返回 409 REQUEST_ALREADY_PROCESSED，
+    // 重试若复用同一 requestId 会被幂等检查拦死（曾导致上游 5xx 后任务必挂）。
+    const errorBody = JSON.stringify({ code: "UPSTREAM_ERROR", error: "所有上游渠道均不可用" });
+    const sse = 'data: {"choices":[{"delta":{"content":"重试成功"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(errorBody, { status: 502, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(sse, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const streamFn = createRelayStreamFunction({ userId: "user_1", taskRunId: "run_1" });
+    const events = await collect(streamFn(createRelayModel("deepseek-v4-flash"), minimalContext(), {}) as never);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const first = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { requestId: string };
+    const second = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { requestId: string };
+    expect(first.requestId).not.toBe(second.requestId);
+    expect(events.some((event) => event.type === "done")).toBe(true);
+  });
+
+  it("uses a fresh requestId when retrying an empty stream", async () => {
+    // 回归：第一次 200 空流时 relay 已把该 requestId 置为 unsettled，
+    // 空流重试同样必须换新 requestId，否则被 409 拒绝。
+    const sse = 'data: {"choices":[{"delta":{"content":"重试成功"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response("", { status: 200, headers: { "content-type": "text/event-stream" } }))
+      .mockResolvedValueOnce(new Response(sse, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const streamFn = createRelayStreamFunction({ userId: "user_1", taskRunId: "run_1" });
+    const events = await collect(streamFn(createRelayModel("deepseek-v4-flash"), minimalContext(), {}) as never);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const first = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { requestId: string };
+    const second = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { requestId: string };
+    expect(first.requestId).not.toBe(second.requestId);
+    expect(events.some((event) => event.type === "done")).toBe(true);
+  });
 });
