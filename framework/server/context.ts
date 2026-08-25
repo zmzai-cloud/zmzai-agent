@@ -4,6 +4,7 @@ import { productEventLog } from "@/framework/core/events/product-event-log";
 import { createMongoWorkspaceFiles, createWorkspaceAggregateFiles } from "@/framework/core/tools/mongo-workspace";
 import { defaultStore } from "@/framework/core/runtime/runner";
 import { createRelayModel, createRelayStreamFunction } from "@/lib/relay-agent-stream";
+import { resolveLocalTools } from "@/lib/relay-local-tools";
 import { buildExecSnapshot } from "@/lib/sandbox-snapshot";
 import { runSandboxCommandAndStream } from "@/lib/sandbox-execution";
 import { activeRunIdForSession } from "@/lib/task-run-control";
@@ -86,6 +87,8 @@ function getOrCreateRunner(): SessionRunner {
       },
     },
     sessionRuleTtlMs: 24 * 60 * 60_000,
+    // 本机工具（用户桌面 fs/shell/notify）：本地演示模式（无 relay）不启用。
+    localTools: localMode ? undefined : resolveLocalTools(),
     loadWorkspaceAgents: localMode
       ? async () => (await loadCustomAgents(localWorkspaceFiles())).agents
       : async (session: SessionInfo) => {
