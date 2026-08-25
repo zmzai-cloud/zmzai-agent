@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { connectMongo } from "@/lib/database/mongodb";
 import { AgentApiKeyModel } from "@/models/agent-api-key";
 
-export const agentApiScopes = ["tasks:write", "tasks:read", "artifacts:read", "webhooks:write"] as const;
+export const agentApiScopes = ["tasks:write", "tasks:read", "artifacts:read", "webhooks:write", "chat:write"] as const;
 export type AgentApiScope = (typeof agentApiScopes)[number];
 
 export type ResolvedAgentApiKey = {

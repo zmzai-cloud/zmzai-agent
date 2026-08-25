@@ -7,7 +7,7 @@ import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, Select as The
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 
 type Workspace = { id: string; name: string };
-type ApiKeyScope = "tasks:write" | "tasks:read" | "artifacts:read" | "webhooks:write";
+type ApiKeyScope = "tasks:write" | "tasks:read" | "artifacts:read" | "webhooks:write" | "chat:write";
 type ApiKey = { id: string; prefix: string; name: string; workspaceIds: string[]; scopes: ApiKeyScope[]; status: "active" | "revoked"; lastUsedAt: string | null; revokedAt: string | null; createdAt: string };
 type WebhookEvent = "task.succeeded" | "task.failed" | "task.cancelled";
 type Subscription = { id: string; workspaceId: string; name: string; url: string; events: WebhookEvent[]; status: "active" | "paused"; secretPrefix: string; lastDeliveredAt: string | null; lastError: string | null; createdAt: string };
@@ -19,6 +19,7 @@ const scopeOptions: Array<{ id: ApiKeyScope; label: string; detail: string }> = 
   { id: "tasks:read", label: "读取任务", detail: "查询状态和结构化结果" },
   { id: "artifacts:read", label: "读取成果", detail: "下载任务生成的文件" },
   { id: "webhooks:write", label: "管理 Webhook", detail: "保留给服务端集成管理" },
+  { id: "chat:write", label: "Chat 补全", detail: "OpenAI 兼容的 /v1/chat/completions 接口" },
 ];
 const eventOptions: Array<{ id: WebhookEvent; label: string }> = [
   { id: "task.succeeded", label: "任务完成" },
