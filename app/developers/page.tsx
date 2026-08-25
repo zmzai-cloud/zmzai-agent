@@ -212,6 +212,8 @@ function ApiReference({ baseUrl }: { baseUrl: string }) {
           ["GET", "/v1/artifacts/{artifact_id}", "artifacts:read", "下载任务生成的文件"],
           ["POST", "/v1/chat/completions", "chat:write", "OpenAI 兼容的流式补全"],
           ["GET", "/v1/models", "chat:write", "列出可用模型"],
+          ["POST", "/v1/research", "tasks:write", "创建 Wide Research 研究任务"],
+          ["GET", "/v1/research", "tasks:read", "查询研究任务与子任务结果"],
         ]}
       />
       <h3 className="mb-3 mt-6 text-base font-semibold text-ink">创建任务</h3>
@@ -266,8 +268,58 @@ function ApiReference({ baseUrl }: { baseUrl: string }) {
         <CodeExample title="响应" language="json" code={`{ "task_id": "task_xxx", "cancelled": true, "run_id": "run_xxx", "replayed": false }`} />
       </EndpointCard>
       <EndpointCard method="GET" path="/v1/artifacts/{artifact_id}" scope="artifacts:read" description="下载任务生成的文件，响应为文件二进制流（attachment）。文件 id 来自任务查询结果中的 artifacts 数组。">
+        <CodeExample title="curl" language="bash" code={`curl -OJ ${baseUrl}/v1/artifacts/art_xxx \\
+  -H "Authorization: Bearer zma_你的密钥"`} />
+        <p className="mt-3 text-sm text-ink-3">响应头：<InlineCode>content-type</InlineCode> 为文件 MIME 类型，<InlineCode>content-disposition: attachment</InlineCode> 携带 UTF-8 文件名（<InlineCode>curl -OJ</InlineCode> 可直接保存），<InlineCode>etag</InlineCode> 为文件 SHA-256 摘要，可用于完整性校验。</p>
       </EndpointCard>
-      <h3 className="mb-3 mt-6 text-base font-semibold text-ink">Chat 补全</h3>
+      <h3 className="mb-3 mt-6 text-base font-semibold text-ink">研究任务（Wide Research）</h3>
+      <EndpointCard method="POST" path="/v1/research" scope="tasks:write" description="发起一个多角色并行研究任务：多个子 Agent 分别承担不同研究角色、独立产出结论，适合资料调研、竞品分析、事实核验等场景。">
+        <DocTable
+          headers={["字段", "类型", "说明"]}
+          rows={[
+            ["workspace_id", "string · 必填", "任务所属工作区"],
+            ["question", "string · 必填", "研究问题，最多 32 KiB"],
+            ["roles", "string[]", "研究角色（2–8 个），默认 资料检索 / 事实核验 / 反方审查"],
+            ["max_concurrency", "integer", "并行子任务数（1–4），默认 3"],
+            ["project_id", "string", "关联项目（可选）"],
+          ]}
+        />
+        <p className="mt-3 text-sm text-ink-3">可用角色：资料检索、事实核验、反方审查、行业视角、数据整理、趋势分析、案例比较、风险评估。同样支持 <InlineCode>Idempotency-Key</InlineCode> 幂等。</p>
+        <CodeExample title="curl" language="bash" code={`curl -X POST ${baseUrl}/v1/research \\
+  -H "Authorization: Bearer zma_你的密钥" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: res_20260825_001" \\
+  -d '{
+    "workspace_id": "ws_xxx",
+    "question": "2026 年 AI Agent 开发平台的关键竞争维度有哪些？",
+    "roles": ["资料检索", "事实核验", "行业视角"],
+    "max_concurrency": 3
+  }'`} />
+        <CodeExample title="响应（HTTP 202，子任务已入队）" language="json" code={`{
+  "research_job_id": "resjob_xxx",
+  "task_id": "task_xxx",
+  "run_id": "run_xxx",
+  "status": "queued",
+  "child_count": 3,
+  "replayed": false
+}`} />
+      </EndpointCard>
+      <EndpointCard method="GET" path="/v1/research?research_job_id={id}" scope="tasks:read" description="查询研究任务状态与各子任务结论，children 中每个子任务对应一个研究角色。">
+        <CodeExample title="响应" language="json" code={`{
+  "research_job_id": "resjob_xxx",
+  "task_id": "task_xxx",
+  "status": "succeeded",
+  "question": "2026 年 AI Agent 开发平台的关键竞争维度有哪些？",
+  "children": [
+    { "task_id": "task_c1", "role": "资料检索", "status": "succeeded", "summary": "……", "error": null },
+    { "task_id": "task_c2", "role": "事实核验", "status": "succeeded", "summary": "……", "error": null },
+    { "task_id": "task_c3", "role": "行业视角", "status": "succeeded", "summary": "……", "error": null }
+  ],
+  "failed_children": 0,
+  "error": null
+}`} />
+      </EndpointCard>
+      <h3 className="mb-3 mt-6 text-base font-semibold text-ink">Chat 补全与模型</h3>
       <EndpointCard method="POST" path="/v1/chat/completions" scope="chat:write" description="OpenAI 兼容的聊天补全接口，支持流式（stream: true），可直接对接 OpenAI SDK。">
         <CodeExample title="curl" language="bash" code={`curl -X POST ${baseUrl}/v1/chat/completions \\
   -H "Authorization: Bearer zma_你的密钥" \\
@@ -288,6 +340,17 @@ function ApiReference({ baseUrl }: { baseUrl: string }) {
             ["top_p / stop / n", "number / string / int", "OpenAI 标准采样参数（n 仅支持 1）"],
           ]}
         />
+      </EndpointCard>
+      <EndpointCard method="GET" path="/v1/models" scope="chat:write" description="列出当前可用的模型 ID，响应结构与 OpenAI /v1/models 一致，可直接用作 chat/completions 的 model 参数。">
+        <CodeExample title="curl" language="bash" code={`curl ${baseUrl}/v1/models \\
+  -H "Authorization: Bearer zma_你的密钥"`} />
+        <CodeExample title="响应" language="json" code={`{
+  "object": "list",
+  "data": [
+    { "id": "gpt-5.6-luna", "object": "model", "created": 1787640000, "owned_by": "relay" },
+    { "id": "deepseek-v3", "object": "model", "created": 1787640000, "owned_by": "relay" }
+  ]
+}`} />
       </EndpointCard>
       <h3 className="mb-3 mt-6 text-base font-semibold text-ink">Webhook 签名验证</h3>
       <Card padding="md" className="mb-4">
@@ -353,6 +416,64 @@ def verify_signature(secret, timestamp, webhook_id, body, signature) -> bool:
   }
 }`} />
       </Card>
+      <h3 className="mb-3 mt-6 text-base font-semibold text-ink">自动化通知入口</h3>
+      <p className="mb-3 text-sm text-ink-3">为自动化配置邮件、Slack 或 Webhook 入口后，外部系统可向以下端点推送事件、触发自动化任务。这三个端点使用创建自动化时生成的 <InlineCode>webhookSecret</InlineCode> 做签名认证，<strong className="text-ink">不经过 API Key 认证</strong>；配置自动化时展示的回调 URL 即对应端点。</p>
+      <DocTable
+        headers={["方法", "路径", "认证", "说明"]}
+        rows={[
+          ["POST", "/v1/automations/{automation_id}/email", "webhookSecret", "邮件消息入口（≤ 256 KiB）"],
+          ["POST", "/v1/automations/{automation_id}/slack", "webhookSecret", "Slack 事件入口，支持 URL 验证握手"],
+          ["POST", "/v1/automations/{automation_id}/webhook", "webhookSecret", "通用 Webhook 事件入口（≤ 64 KiB）"],
+        ]}
+      />
+      <EndpointCard method="POST" path="/v1/automations/{automation_id}/webhook" scope="webhookSecret" description="通用 Webhook 入口：携带自定义事件 ID，验签通过后触发自动化任务。">
+        <DocTable
+          headers={["请求头", "说明"]}
+          rows={[
+            ["x-zmzai-event-id", "事件唯一 ID（必填，用于去重）"],
+            ["x-zmzai-timestamp", "ISO 8601 时间戳，偏差超过 5 分钟拒绝"],
+            ["x-zmzai-signature", "签名，格式 v1=<hex>"],
+          ]}
+        />
+        <p className="mt-3 text-sm text-ink-3">签名算法与 Webhook 投递验签一致：<InlineCode>{"v1 = HMAC_SHA256(secret, `${timestamp}.${event_id}.${raw_body}`)"}</InlineCode>。</p>
+        <CodeExample title="curl" language="bash" code={`curl -X POST ${baseUrl}/v1/automations/auto_xxx/webhook \\
+  -H "x-zmzai-event-id: evt_001" \\
+  -H "x-zmzai-timestamp: 2026-08-25T10:00:00.000Z" \\
+  -H "x-zmzai-signature: v1=计算出的签名" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "kind": "ci_finished",
+    "repo": "zmzai/zmzai-agent"
+  }'`} />
+        <CodeExample title="响应（HTTP 202）" language="json" code={`{
+  "accepted": true,
+  "replayed": false,
+  "execution_id": "aexec_xxx",
+  "task_id": "task_xxx",
+  "run_id": "run_xxx"
+}`} />
+      </EndpointCard>
+      <EndpointCard method="POST" path="/v1/automations/{automation_id}/email" scope="webhookSecret" description="邮件入口：兼容邮件网关转发，验签通过后触发自动化任务。">
+        <DocTable
+          headers={["请求头", "说明"]}
+          rows={[
+            ["x-zmzai-email-id", "邮件 message id（必填，用于去重与回复链关联）"],
+            ["x-zmzai-email-timestamp", "ISO 8601 时间戳，偏差超过 5 分钟拒绝"],
+            ["x-zmzai-email-signature", "签名，格式 v1=<hex>"],
+          ]}
+        />
+        <p className="mt-3 text-sm text-ink-3">签名算法：<InlineCode>{"v1 = HMAC_SHA256(secret, `${timestamp}.${message_id}.${raw_body}`)"}</InlineCode>。请求体为邮件 JSON：<InlineCode>message_id</InlineCode> / <InlineCode>from</InlineCode> / <InlineCode>to</InlineCode> / <InlineCode>subject</InlineCode> / <InlineCode>text</InlineCode>（≤ 256 KiB）；携带 <InlineCode>in_reply_to</InlineCode> 可关联回复链，让自动化基于上下文继续执行。</p>
+      </EndpointCard>
+      <EndpointCard method="POST" path="/v1/automations/{automation_id}/slack" scope="webhookSecret" description="Slack 事件入口：兼容 Slack Events API 的 URL 验证握手与签名协议。">
+        <DocTable
+          headers={["请求头", "说明"]}
+          rows={[
+            ["x-slack-request-timestamp", "Slack 事件时间戳（Unix 秒）"],
+            ["x-slack-signature", "Slack 标准 v0 签名"],
+          ]}
+        />
+        <p className="mt-3 text-sm text-ink-3">URL 验证请求返回 <InlineCode>{"{ \"challenge\": \"…\" }"}</InlineCode>；消息事件验签通过后触发自动化任务。Slack 应用的事件订阅 URL 填 <InlineCode>{baseUrl}/v1/automations/auto_xxx/slack</InlineCode>，签名密钥取自自动化配置页的 webhookSecret。</p>
+      </EndpointCard>
     </div>
   );
 }
