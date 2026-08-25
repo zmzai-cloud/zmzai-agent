@@ -135,5 +135,49 @@ export async function projectAutomationExecution(input: { sessionId: string; sta
     { automationId: execution.automationId, userId: execution.userId },
     { $set: { lastRunStatus: input.status === "cancelled" ? "failed" : input.status, lastError: input.error?.slice(0, 2_000) ?? null, lastRunAt: now, lastRunTaskId: execution.taskId, lastRunId: execution.runId } },
   ));
-  if (input.status === "succeeded" || input.status === "failed") await replyToSlack(input.sessionId, input.status);
+  if (input.status === "succeeded" || input.status === "failed") {
+    await replyToSlack(input.sessionId, input.status);
+    await notifyFeishuOnCompletion(input.sessionId, input.status, input.error);
+  }
+}
+
+/**
+ * 自动化完成时发送飞书通知
+ */
+async function notifyFeishuOnCompletion(sessionId: string, status: "succeeded" | "failed", error?: string): Promise<void> {
+  try {
+    const execution = await AutomationExecutionModel.findOne({ sessionId }).lean();
+    if (!execution) return;
+
+    const { AutomationModel } = await import("@/models/automation");
+    const automation = await AutomationModel.findOne({ automationId: execution.automationId }).lean();
+    if (!automation?.notifyChatId) return;
+
+    const task = await TaskModel.findOne({ taskId: execution.taskId }).select({ title: 1 }).lean();
+
+    let summary: string | null = null;
+    if (status === "succeeded") {
+      const { defaultStore } = await import("@/framework/core/runtime/runner");
+      const { finalAssistantText } = await import("@/lib/structured-output");
+      summary = finalAssistantText(await defaultStore.getMessages(sessionId))?.slice(0, 800) ?? null;
+    }
+
+    const durationMs = execution.startedAt ? (execution.finishedAt ?? new Date()).getTime() - execution.startedAt.getTime() : undefined;
+
+    const { notifyTaskCompletion } = await import("@/lib/ipaas/feishu-notification");
+    await notifyTaskCompletion({
+      workspaceId: execution.workspaceId,
+      automationName: automation.name,
+      status,
+      taskTitle: task?.title,
+      summary,
+      error: error ?? null,
+      durationMs,
+      taskId: execution.taskId,
+      runId: execution.runId,
+      receiveId: automation.notifyChatId,
+    });
+  } catch (cause) {
+    console.error("飞书通知发送失败", cause);
+  }
 }

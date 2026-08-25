@@ -12,7 +12,7 @@ import { canEditProject, getProjectAccess } from "@/lib/project-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const updateSchema = z.object({ name: z.string().trim().min(1).max(160).optional(), goal: z.string().trim().min(1).max(32 * 1024).optional(), schedule: z.string().trim().max(120).optional(), timezone: z.string().trim().max(64).optional(), status: z.enum(["active", "paused"]).optional() }).strict();
+const updateSchema = z.object({ name: z.string().trim().min(1).max(160).optional(), goal: z.string().trim().min(1).max(32 * 1024).optional(), schedule: z.string().trim().max(120).optional(), timezone: z.string().trim().max(64).optional(), status: z.enum(["active", "paused"]).optional(), notifyChatId: z.string().trim().min(1).max(128).nullable().optional() }).strict();
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ automationId: string }> }) {
   const user = await getCurrentUser();

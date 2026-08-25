@@ -22,6 +22,7 @@ const automationSchema = new Schema(
     schedulerLeaseExpiresAt: { type: Date, default: null },
     webhookSecret: { type: String, default: null, select: false },
     webhookSecretPrefix: { type: String, default: null, maxlength: 24 },
+    notifyChatId: { type: String, default: null, maxlength: 128 },
   },
   { strict: "throw", timestamps: true },
 );
