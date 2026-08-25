@@ -54,7 +54,7 @@ pnpm test
 | --- | --- | --- |
 | `APP_URL` | `http://localhost:3000` | 当前 Agent 服务地址 |
 | `MONGODB_URI` | 无 | Workspace、Task Run、Tool Call 等数据存储 |
-| `AUTH_SECRET` | 无 | 必须与牧之账号体系一致，用于校验 session |
+| `AUTH_SECRET` | 无 | 必须与知末智云账号体系一致，用于校验 session |
 | `SESSION_COOKIE_NAME` | `muzhi_session` | 登录态 cookie 名称 |
 | `SESSION_COOKIE_DOMAIN` | 空 | 多子域共享登录时使用 |
 | `RELAY_AGENT_URL` | `https://m.zmzai.cloud` | Relay 内部 Agent API 地址 |
@@ -65,8 +65,8 @@ pnpm test
 
 ## 相关仓库
 
-- [`zmzai-relay`](https://github.com/Ulanxx/zmzai-relay)：模型目录、额度钱包与模型调用边界；
-- [`zmzai-sandbox`](https://github.com/Ulanxx/zmzai-sandbox)：受限代码执行层；
-- [`zmzai-db`](https://github.com/Ulanxx/zmzai-db)：共享用户、账号和 session schema。
+- [`zmzai-relay`](https://github.com/zmzai-cloud/zmzai-relay)：模型目录、额度钱包与模型调用边界；
+- [`zmzai-sandbox`](https://github.com/zmzai-cloud/zmzai-sandbox)：受限代码执行层；
+- [`zmzai-db`](https://github.com/zmzai-cloud/zmzai-db)：共享用户、账号和 session schema。
 
-Apache-2.0 · 牧之
+Apache-2.0 · 知末智云
