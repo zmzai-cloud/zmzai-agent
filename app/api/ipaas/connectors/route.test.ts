@@ -38,18 +38,18 @@ beforeEach(() => {
 describe("GET /api/ipaas/connectors", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new NextRequest("http://localhost/api/ipaas/connectors") as any);
+    const res = await GET(new NextRequest("http://localhost/api/ipaas/connectors"));
     expect(res.status).toBe(401);
   });
 
   it("returns 400 when workspaceId is missing", async () => {
-    const res = await GET(new NextRequest("http://localhost/api/ipaas/connectors") as any);
+    const res = await GET(new NextRequest("http://localhost/api/ipaas/connectors"));
     expect(res.status).toBe(400);
   });
 
   it("returns 404 when workspace does not exist", async () => {
     mocks.getWorkspace.mockResolvedValue(null);
-    const res = await GET(new NextRequest("http://localhost/api/ipaas/connectors?workspaceId=ws_bad") as any);
+    const res = await GET(new NextRequest("http://localhost/api/ipaas/connectors?workspaceId=ws_bad"));
     expect(res.status).toBe(404);
   });
 
@@ -62,7 +62,7 @@ describe("GET /api/ipaas/connectors", () => {
       ]) }) }),
     });
 
-    const res = await GET(new NextRequest("http://localhost/api/ipaas/connectors?workspaceId=ws_1") as any);
+    const res = await GET(new NextRequest("http://localhost/api/ipaas/connectors?workspaceId=ws_1"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.connectors).toHaveLength(1);
@@ -72,19 +72,19 @@ describe("GET /api/ipaas/connectors", () => {
 
 describe("POST /api/ipaas/connectors", () => {
   it("returns 400 for invalid body", async () => {
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1" }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1" }) }));
     expect(res.status).toBe(400);
   });
 
   it("returns 404 when workspace does not exist", async () => {
     mocks.getWorkspace.mockResolvedValue(null);
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_bad", platform: "feishu", name: "Test", credentials: { appId: "cli_1", appSecret: "secret" } }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_bad", platform: "feishu", name: "Test", credentials: { appId: "cli_1", appSecret: "secret" } }) }));
     expect(res.status).toBe(404);
   });
 
   it("returns 400 for feishu without appId", async () => {
     mocks.getWorkspace.mockResolvedValue({ workspaceId: "ws_1" });
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", platform: "feishu", name: "Test", credentials: { appId: "" } }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", platform: "feishu", name: "Test", credentials: { appId: "" } }) }));
     expect(res.status).toBe(400);
   });
 
@@ -97,7 +97,7 @@ describe("POST /api/ipaas/connectors", () => {
       status: "active", lastActivityAt: null, lastError: null, createdAt: now,
     });
 
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", platform: "feishu", name: "My Bot", credentials: { appId: "cli_1", appSecret: "secret" }, inboundEnabled: true, outboundEnabled: true }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", platform: "feishu", name: "My Bot", credentials: { appId: "cli_1", appSecret: "secret" }, inboundEnabled: true, outboundEnabled: true }) }));
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.connector.connectorId).toBe("ipc_new");

@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -35,19 +36,19 @@ beforeEach(() => {
 describe("POST /api/automations/:automationId/run", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost", { method: "POST" }) as any, { params: Promise.resolve({ automationId: "aut_1" }) });
+    const res = await POST(new NextRequest("http://localhost", { method: "POST" }), { params: Promise.resolve({ automationId: "aut_1" }) });
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when automation does not exist", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
-    const res = await POST(new Request("http://localhost", { method: "POST" }) as any, { params: Promise.resolve({ automationId: "aut_missing" }) });
+    const res = await POST(new NextRequest("http://localhost", { method: "POST" }), { params: Promise.resolve({ automationId: "aut_missing" }) });
     expect(res.status).toBe(404);
   });
 
   it("returns 409 when automation is paused", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ automationId: "aut_1", userId: "user_1", status: "paused", projectId: null }) });
-    const res = await POST(new Request("http://localhost", { method: "POST" }) as any, { params: Promise.resolve({ automationId: "aut_1" }) });
+    const res = await POST(new NextRequest("http://localhost", { method: "POST" }), { params: Promise.resolve({ automationId: "aut_1" }) });
     expect(res.status).toBe(409);
   });
 
@@ -57,7 +58,7 @@ describe("POST /api/automations/:automationId/run", () => {
     mocks.claimIdempotency.mockResolvedValue({ replayed: false, resourceId: "ses_abc123" });
     mocks.launchAutomation.mockResolvedValue({ session: { id: "ses_abc123" }, task: { taskId: "task_1" }, run: { runId: "run_1" } });
 
-    const res = await POST(new Request("http://localhost", { method: "POST" }) as any, { params: Promise.resolve({ automationId: "aut_1" }) });
+    const res = await POST(new NextRequest("http://localhost", { method: "POST" }), { params: Promise.resolve({ automationId: "aut_1" }) });
     expect(res.status).toBe(202);
     expect(mocks.launchAutomation).toHaveBeenCalledWith(expect.objectContaining({ automation, source: "manual", sessionId: "ses_abc123" }));
   });

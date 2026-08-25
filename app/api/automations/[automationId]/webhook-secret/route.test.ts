@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -36,27 +37,27 @@ beforeEach(() => {
 describe("POST /api/automations/.../webhook-secret", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when automation is not found", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
   });
 
   it("returns 404 when non-owner has no project access", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ automationId: "aut_1", userId: "user_2", projectId: "proj_1" }) });
     mocks.getProjectAccess.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
   });
 
   it("generates secret for automation owner (no project)", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ automationId: "aut_1", userId: "user_1", projectId: null }) });
     mocks.generateSecret.mockReturnValue({ encrypted: "enc_secret", plaintext: "whsec_abc", prefix: "whsec_" });
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.secret).toBe("whsec_abc");
@@ -73,7 +74,7 @@ describe("POST /api/automations/.../webhook-secret", () => {
     mocks.getProjectAccess.mockResolvedValue({ role: "editor" });
     mocks.canEditProject.mockReturnValue(true);
     mocks.generateSecret.mockReturnValue({ encrypted: "enc", plaintext: "whsec_xy", prefix: "whsec_" });
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
   });
 });

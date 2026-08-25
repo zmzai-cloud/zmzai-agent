@@ -48,18 +48,18 @@ beforeEach(() => {
 describe("POST /api/artifacts/[artifactId]/project", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: "{}" }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: "{}" }), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 400 when projectId is missing", async () => {
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({}) }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({}) }), ctx());
     expect(res.status).toBe(400);
   });
 
   it("returns 404 when project does not exist", async () => {
     mocks.projectFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) });
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ projectId: "proj_bad" }) }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ projectId: "proj_bad" }) }), ctx());
     expect(res.status).toBe(404);
   });
 
@@ -67,7 +67,7 @@ describe("POST /api/artifacts/[artifactId]/project", () => {
     mocks.projectFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ projectId: "proj_1", workspaceId: "ws_1", userId: "user_2" }) }) });
     mocks.getProjectAccess.mockResolvedValue({ role: "viewer", project: { projectId: "proj_1", workspaceId: "ws_1", userId: "user_2" } });
     mocks.canEditProject.mockReturnValue(false);
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ projectId: "proj_1" }) }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ projectId: "proj_1" }) }), ctx());
     expect(res.status).toBe(403);
   });
 
@@ -75,7 +75,7 @@ describe("POST /api/artifacts/[artifactId]/project", () => {
     mocks.projectFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ projectId: "proj_1", workspaceId: "ws_1", userId: "user_1" }) }) });
     mocks.getProjectAccess.mockResolvedValue({ role: "owner", project: { projectId: "proj_1", workspaceId: "ws_1", userId: "user_1" } });
     mocks.getArtifactAccess.mockResolvedValue(null);
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ projectId: "proj_1" }) }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ projectId: "proj_1" }) }), ctx());
     expect(res.status).toBe(404);
   });
 
@@ -85,7 +85,7 @@ describe("POST /api/artifacts/[artifactId]/project", () => {
     mocks.getArtifactAccess.mockResolvedValue({ artifact: { artifactId: "art_1", userId: "user_1" } });
     const reference = { referenceId: "par_aaaaaaaabbbbccccdddd", projectId: "proj_1", workspaceId: "ws_1", artifactId: "art_1", artifactOwnerId: "user_1", addedBy: "user_1" };
     mocks.projectArtifactFindOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue(reference) });
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ projectId: "proj_1" }) }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ projectId: "proj_1" }) }), ctx());
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.reference.projectId).toBe("proj_1");
@@ -96,21 +96,21 @@ describe("POST /api/artifacts/[artifactId]/project", () => {
 describe("DELETE /api/artifacts/[artifactId]/project", () => {
   it("returns 404 when project access is denied", async () => {
     mocks.getProjectAccess.mockResolvedValue(null);
-    const res = await DELETE(new Request("http://localhost/api/artifacts/art_1/project?projectId=proj_1"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost/api/artifacts/art_1/project?projectId=proj_1"), ctx());
     expect(res.status).toBe(404);
   });
 
   it("returns 404 when reference does not exist", async () => {
     mocks.getProjectAccess.mockResolvedValue({ role: "owner" });
     mocks.projectArtifactDeleteOne.mockResolvedValue({ deletedCount: 0 });
-    const res = await DELETE(new Request("http://localhost/api/artifacts/art_1/project?projectId=proj_1"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost/api/artifacts/art_1/project?projectId=proj_1"), ctx());
     expect(res.status).toBe(404);
   });
 
   it("deletes a project-artifact reference", async () => {
     mocks.getProjectAccess.mockResolvedValue({ role: "owner" });
     mocks.projectArtifactDeleteOne.mockResolvedValue({ deletedCount: 1 });
-    const res = await DELETE(new Request("http://localhost/api/artifacts/art_1/project?projectId=proj_1"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost/api/artifacts/art_1/project?projectId=proj_1"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.deleted).toBe(true);

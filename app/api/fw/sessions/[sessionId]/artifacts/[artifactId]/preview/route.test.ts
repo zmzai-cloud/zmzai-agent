@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { Readable } from "node:stream";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,14 +40,14 @@ describe("GET session artifact preview", () => {
     });
     mocks.openArtifactStream.mockReturnValue(Readable.from(["<html></html>"]));
 
-    const response = await GET(new Request("http://localhost"), ctx("session_1", "art_1"));
+    const response = await GET(new NextRequest("http://localhost"), ctx("session_1", "art_1"));
     expect(response.status).toBe(200);
   });
 
   it("returns a non-leaking 404 for a session owned by another user without project access", async () => {
     mocks.currentUser.mockResolvedValue({ id: "user_stranger" });
 
-    const response = await GET(new Request("http://localhost"), ctx("session_1", "art_1"));
+    const response = await GET(new NextRequest("http://localhost"), ctx("session_1", "art_1"));
     expect(response.status).toBe(404);
     expect(mocks.findArtifactForSession).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toMatchObject({ code: "SESSION_NOT_FOUND" });
@@ -55,7 +56,7 @@ describe("GET session artifact preview", () => {
   it("returns a non-leaking 404 when the artifact belongs to another session", async () => {
     mocks.findArtifactForSession.mockResolvedValue(null);
 
-    const response = await GET(new Request("http://localhost"), ctx("session_1", "art_other"));
+    const response = await GET(new NextRequest("http://localhost"), ctx("session_1", "art_other"));
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({ code: "ARTIFACT_NOT_FOUND" });
   });
@@ -63,7 +64,7 @@ describe("GET session artifact preview", () => {
   it("returns 404 without a token for an unauthenticated request", async () => {
     mocks.currentUser.mockResolvedValue(null);
 
-    const response = await GET(new Request("http://localhost"), ctx("session_1", "art_1"));
+    const response = await GET(new NextRequest("http://localhost"), ctx("session_1", "art_1"));
     expect([401, 404]).toContain(response.status);
     expect(mocks.findArtifactForSession).not.toHaveBeenCalled();
   });

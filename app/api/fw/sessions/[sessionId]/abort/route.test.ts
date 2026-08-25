@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -44,19 +45,19 @@ beforeEach(() => {
 describe("POST /api/fw/sessions/.../abort", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when session does not exist", async () => {
     mocks.getSession.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
   });
 
   it("aborts a session owned by the user", async () => {
     mocks.getSession.mockResolvedValue({ sessionId: "sess_1", userId: "user_1" });
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.aborted).toBe(true);
@@ -67,7 +68,7 @@ describe("POST /api/fw/sessions/.../abort", () => {
   it("returns 404 when non-owner has no project access", async () => {
     mocks.getSession.mockResolvedValue({ sessionId: "sess_1", userId: "user_2" });
     mocks.getSessionProjectAccess.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
   });
 
@@ -75,7 +76,7 @@ describe("POST /api/fw/sessions/.../abort", () => {
     mocks.getSession.mockResolvedValue({ sessionId: "sess_1", userId: "user_2" });
     mocks.getSessionProjectAccess.mockResolvedValue({ role: "editor" });
     mocks.canRunProject.mockReturnValue(true);
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.aborted).toBe(true);

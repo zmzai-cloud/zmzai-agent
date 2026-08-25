@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { Badge, Button, Card, CodeBlock, EmptyState, Icon, IconButton, Input, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs } from "@zmzai/theme";
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
@@ -44,6 +44,9 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 function time(value: string | null) {
   return value ? new Date(value).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short" }) : "尚未使用";
 }
+
+/** 永不变化的订阅（useSyncExternalStore 用），用于读取不会变更的浏览器环境值。 */
+const subscribeNever = () => () => {};
 
 function scopeLabel(scope: ApiKeyScope) {
   return scopeOptions.find((option) => option.id === scope)?.label ?? scope;
@@ -357,7 +360,8 @@ def verify_signature(secret, timestamp, webhook_id, body, signature) -> bool:
 
 export default function DevelopersPage() {
   const [tab, setTab] = useState<Tab>("quickstart");
-  const [baseUrl, setBaseUrl] = useState("https://a.zmzai.cloud");
+  // base URL 在客户端取当前 origin，SSR 时回退到生产域名（useSyncExternalStore 避免 hydration 差异）。
+  const baseUrl = useSyncExternalStore(subscribeNever, () => window.location.origin, () => "https://a.zmzai.cloud");
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -404,7 +408,6 @@ export default function DevelopersPage() {
     // Initial state is intentionally loaded once; later workspace changes call load explicitly.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { setBaseUrl(window.location.origin); }, []);
 
   const toggle = <T extends string,>(items: T[], item: T) => items.includes(item) ? items.filter((value) => value !== item) : [...items, item];
   const copy = async (value: string) => {

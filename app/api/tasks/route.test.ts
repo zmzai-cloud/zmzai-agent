@@ -43,7 +43,7 @@ beforeEach(() => {
 describe("GET /api/tasks", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new NextRequest("http://localhost/api/tasks") as any);
+    const res = await GET(new NextRequest("http://localhost/api/tasks"));
     expect(res.status).toBe(401);
   });
 
@@ -51,7 +51,7 @@ describe("GET /api/tasks", () => {
     mocks.memberFind.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
     mocks.taskFind.mockReturnValue(chainMock([]));
 
-    const res = await GET(new NextRequest("http://localhost/api/tasks") as any);
+    const res = await GET(new NextRequest("http://localhost/api/tasks"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.tasks).toEqual([]);
@@ -65,7 +65,7 @@ describe("GET /api/tasks", () => {
     mocks.taskFind.mockReturnValue(chainMock(tasks));
     mocks.runFind.mockReturnValue({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
 
-    const res = await GET(new NextRequest("http://localhost/api/tasks") as any);
+    const res = await GET(new NextRequest("http://localhost/api/tasks"));
     const body = await res.json();
     expect(body.tasks).toHaveLength(1);
     expect(body.tasks[0].task.taskId).toBe("task_1");
@@ -90,7 +90,7 @@ describe("GET /api/tasks", () => {
     ];
     mocks.runFind.mockReturnValue({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(runs) }) });
 
-    const res = await GET(new NextRequest("http://localhost/api/tasks") as any);
+    const res = await GET(new NextRequest("http://localhost/api/tasks"));
     const body = await res.json();
     // task_1 should get the first run in the sorted array (sort is -1, so first = latest)
     expect(body.tasks[0].latestRun.runId).toBe("run_old");
@@ -102,7 +102,7 @@ describe("GET /api/tasks", () => {
     mocks.taskFind.mockReturnValue(chainMock([]));
 
     const url = "http://localhost/api/tasks?workspaceId=ws_1&status=completed";
-    await GET(new NextRequest(url) as any);
+    await GET(new NextRequest(url));
 
     expect(mocks.taskFind).toHaveBeenCalledWith(
       expect.objectContaining({ workspaceId: "ws_1", status: "completed" }),

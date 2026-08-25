@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -64,13 +65,13 @@ describe("GET /api/api-keys", () => {
 describe("POST /api/api-keys", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost") as any);
+    const res = await POST(new NextRequest("http://localhost"));
     expect(res.status).toBe(401);
   });
 
   it("returns 400 for invalid body", async () => {
     const res = await POST(
-      new Request("http://localhost", { method: "POST", body: JSON.stringify({ name: "" }), headers: { "content-type": "application/json" } }) as any,
+      new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ name: "" }), headers: { "content-type": "application/json" } }),
     );
     expect(res.status).toBe(400);
   });
@@ -78,11 +79,11 @@ describe("POST /api/api-keys", () => {
   it("returns 404 when workspace does not exist", async () => {
     mocks.getWorkspace.mockResolvedValue(null);
     const res = await POST(
-      new Request("http://localhost", {
+      new NextRequest("http://localhost", {
         method: "POST",
         body: JSON.stringify({ name: "Test", workspaceIds: ["ws_bad"], scopes: ["tasks:read"] }),
         headers: { "content-type": "application/json" },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(404);
   });
@@ -95,11 +96,11 @@ describe("POST /api/api-keys", () => {
       record: { agentApiKeyId: "key_new", prefix: "zk_n", name: "New Key", workspaceIds: ["ws_1"], scopes: ["tasks:read"], status: "active", lastUsedAt: null, revokedAt: null, createdAt: now },
     });
     const res = await POST(
-      new Request("http://localhost", {
+      new NextRequest("http://localhost", {
         method: "POST",
         body: JSON.stringify({ name: "New Key", workspaceIds: ["ws_1"], scopes: ["tasks:read"] }),
         headers: { "content-type": "application/json" },
-      }) as any,
+      }),
     );
     expect(res.status).toBe(201);
     const body = await res.json();

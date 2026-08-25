@@ -24,7 +24,7 @@ beforeEach(() => {
 describe("GET /api/skills", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new NextRequest("http://localhost/api/skills") as any);
+    const res = await GET(new NextRequest("http://localhost/api/skills"));
     expect(res.status).toBe(401);
   });
 
@@ -32,7 +32,7 @@ describe("GET /api/skills", () => {
     mocks.workspaceFind.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ workspaceId: "ws_1", name: "My WS" }]) }) });
     mocks.skillFind.mockReturnValue({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ skillId: "sk_1", name: "test-skill", description: "A test", repository: "user/repo", requestedRef: "main", commitSha: "abc", path: "skills/test", workspaceId: "ws_1", markdown: "# Test", createdAt: new Date() }]) }) }) });
 
-    const res = await GET(new NextRequest("http://localhost/api/skills") as any);
+    const res = await GET(new NextRequest("http://localhost/api/skills"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.skills).toHaveLength(1);
@@ -44,13 +44,13 @@ describe("GET /api/skills", () => {
     mocks.workspaceFind.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ workspaceId: "ws_1", name: "WS1" }, { workspaceId: "ws_2", name: "WS2" }]) }) });
     mocks.skillFind.mockReturnValue({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) });
 
-    await GET(new NextRequest("http://localhost/api/skills?workspaceId=ws_1") as any);
+    await GET(new NextRequest("http://localhost/api/skills?workspaceId=ws_1"));
     expect(mocks.skillFind).toHaveBeenCalledWith(expect.objectContaining({ workspaceId: { $in: ["ws_1"] } }));
   });
 
   it("returns empty skills when no workspaces exist", async () => {
     mocks.workspaceFind.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
-    const res = await GET(new NextRequest("http://localhost/api/skills") as any);
+    const res = await GET(new NextRequest("http://localhost/api/skills"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.skills).toHaveLength(0);

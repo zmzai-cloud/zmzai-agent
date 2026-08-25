@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -32,18 +33,18 @@ beforeEach(() => {
 describe("POST /api/tasks/[taskId]/share", () => {
   it("returns 401 when unauthenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost", { method: "POST" }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST" }), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when task not found", async () => {
     mocks.taskFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) });
-    const res = await POST(new Request("http://localhost", { method: "POST" }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST" }), ctx());
     expect(res.status).toBe(404);
   });
 
   it("creates a share link", async () => {
-    const res = await POST(new Request("http://localhost", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }) as any, ctx());
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.shareUrl).toContain("/share/t/");
@@ -55,12 +56,12 @@ describe("POST /api/tasks/[taskId]/share", () => {
 describe("DELETE /api/tasks/[taskId]/share", () => {
   it("returns 401 when unauthenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await DELETE(new Request("http://localhost"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("revokes the share", async () => {
-    const res = await DELETE(new Request("http://localhost"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.revoked).toBe(true);
@@ -71,13 +72,13 @@ describe("DELETE /api/tasks/[taskId]/share", () => {
 describe("GET /api/tasks/[taskId]/share", () => {
   it("returns 401 when unauthenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new Request("http://localhost"), ctx());
+    const res = await GET(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns shared: false when no share exists", async () => {
     mocks.shareFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
-    const res = await GET(new Request("http://localhost"), ctx());
+    const res = await GET(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.shared).toBe(false);
@@ -86,7 +87,7 @@ describe("GET /api/tasks/[taskId]/share", () => {
   it("returns shared: true with expiry when share exists", async () => {
     const expiresAt = new Date("2026-09-01T00:00:00Z");
     mocks.shareFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ expiresAt, createdAt: new Date() }) }) }) });
-    const res = await GET(new Request("http://localhost"), ctx());
+    const res = await GET(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.shared).toBe(true);

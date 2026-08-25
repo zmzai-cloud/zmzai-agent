@@ -47,20 +47,20 @@ beforeEach(() => {
 describe("GET /api/workspaces/.../knowledge", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(nextReq() as any, ctx());
+    const res = await GET(nextReq(), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when workspace not found", async () => {
     mocks.getWorkspace.mockResolvedValue(null);
-    const res = await GET(nextReq() as any, ctx());
+    const res = await GET(nextReq(), ctx());
     expect(res.status).toBe(404);
   });
 
   it("returns knowledgeBase entries", async () => {
     const entries = [{ entryId: "kb_1", title: "API Spec", content: "REST guidelines" }];
     mocks.findOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ knowledgeBase: entries }) }) });
-    const res = await GET(nextReq() as any, ctx());
+    const res = await GET(nextReq(), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.knowledgeBase).toEqual(entries);
@@ -68,7 +68,7 @@ describe("GET /api/workspaces/.../knowledge", () => {
 
   it("returns empty array when workspace has no knowledgeBase", async () => {
     mocks.findOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) });
-    const res = await GET(nextReq() as any, ctx());
+    const res = await GET(nextReq(), ctx());
     const body = await res.json();
     expect(body.knowledgeBase).toEqual([]);
   });
@@ -76,7 +76,7 @@ describe("GET /api/workspaces/.../knowledge", () => {
 
 describe("POST /api/workspaces/.../knowledge", () => {
   it("returns 400 for invalid body", async () => {
-    const res = await POST(nextReq("http://localhost", { method: "POST", body: JSON.stringify({ title: "" }), headers: { "content-type": "application/json" } }) as any, ctx());
+    const res = await POST(nextReq("http://localhost", { method: "POST", body: JSON.stringify({ title: "" }), headers: { "content-type": "application/json" } }), ctx());
     expect(res.status).toBe(400);
   });
 
@@ -86,7 +86,7 @@ describe("POST /api/workspaces/.../knowledge", () => {
         method: "POST",
         body: JSON.stringify({ title: "Coding Standards", content: "Use TypeScript strict mode" }),
         headers: { "content-type": "application/json" },
-      }) as any,
+      }),
       ctx(),
     );
     expect(res.status).toBe(201);
@@ -110,7 +110,7 @@ describe("PUT /api/workspaces/.../knowledge", () => {
         method: "PUT",
         body: JSON.stringify({ title: "Updated" }),
         headers: { "content-type": "application/json" },
-      }) as any,
+      }),
       ctx(),
     );
     expect(res.status).toBe(400);
@@ -123,7 +123,7 @@ describe("PUT /api/workspaces/.../knowledge", () => {
         method: "PUT",
         body: JSON.stringify({ entryId: "kb_nonexistent", title: "Updated" }),
         headers: { "content-type": "application/json" },
-      }) as any,
+      }),
       ctx(),
     );
     expect(res.status).toBe(404);
@@ -137,7 +137,7 @@ describe("PUT /api/workspaces/.../knowledge", () => {
         method: "PUT",
         body: JSON.stringify({ entryId: "kb_abc", title: "New Title" }),
         headers: { "content-type": "application/json" },
-      }) as any,
+      }),
       ctx(),
     );
     expect(res.status).toBe(200);
@@ -149,12 +149,12 @@ describe("PUT /api/workspaces/.../knowledge", () => {
 
 describe("DELETE /api/workspaces/.../knowledge", () => {
   it("returns 400 when entryId is missing", async () => {
-    const res = await DELETE(nextReq("http://localhost/api/workspaces/ws_1/knowledge", { method: "DELETE" }) as any, ctx());
+    const res = await DELETE(nextReq("http://localhost/api/workspaces/ws_1/knowledge", { method: "DELETE" }), ctx());
     expect(res.status).toBe(400);
   });
 
   it("deletes an entry by entryId", async () => {
-    const res = await DELETE(nextReq("http://localhost/api/workspaces/ws_1/knowledge?entryId=kb_abc", { method: "DELETE" }) as any, ctx());
+    const res = await DELETE(nextReq("http://localhost/api/workspaces/ws_1/knowledge?entryId=kb_abc", { method: "DELETE" }), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.deleted).toBe(true);

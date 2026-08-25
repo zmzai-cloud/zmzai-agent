@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -26,13 +27,13 @@ beforeEach(() => {
 describe("GET /api/automations/:automationId/executions", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ automationId: "aut_1" }) });
+    const res = await GET(new NextRequest("http://localhost"), { params: Promise.resolve({ automationId: "aut_1" }) });
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when automation does not exist", async () => {
     mocks.automationFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) });
-    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ automationId: "aut_missing" }) });
+    const res = await GET(new NextRequest("http://localhost"), { params: Promise.resolve({ automationId: "aut_missing" }) });
     expect(res.status).toBe(404);
   });
 
@@ -46,7 +47,7 @@ describe("GET /api/automations/:automationId/executions", () => {
       sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(executions) }) }) }),
     });
 
-    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ automationId: "aut_1" }) });
+    const res = await GET(new NextRequest("http://localhost"), { params: Promise.resolve({ automationId: "aut_1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.executions).toHaveLength(2);

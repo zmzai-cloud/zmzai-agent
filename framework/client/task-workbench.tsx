@@ -481,11 +481,24 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
   const collapsedFirstUser = shouldCollapseConversation ? messages.find((m) => !Array.isArray(m) && m.info.role === "user") ?? null : null;
   const collapsedLastAssistant = shouldCollapseConversation ? messages.filter((m) => Array.isArray(m) ? m.some((item) => item.info.role === "assistant") : m.info.role === "assistant").slice(-1)[0] ?? null : null;
 
-  useEffect(() => { setNavigatingToTask(null); setConversationExpanded(false); }, [routeTaskId, routeSessionId]);
+  // 切换任务（路由变化）时重置导航与对话收起状态：
+  // 用渲染期 derived-state 调整，避免在 effect 中同步 setState（react-hooks v6 规则）。
+  const [routeResetKey, setRouteResetKey] = useState("");
+  const routeKey = `${routeTaskId ?? ""}:${routeSessionId ?? ""}`;
+  if (routeResetKey !== routeKey) {
+    setRouteResetKey(routeKey);
+    setNavigatingToTask(null);
+    setConversationExpanded(false);
+  }
 
   // 状态驱动的快捷指令：失败原因/质量检查失败项/审批状态变了就重新生成。
+  const [prevSuggestionTaskId, setPrevSuggestionTaskId] = useState(taskId);
+  if (prevSuggestionTaskId !== taskId) {
+    setPrevSuggestionTaskId(taskId);
+    setSuggestions([]);
+  }
   useEffect(() => {
-    if (!taskId) { setSuggestions([]); return; }
+    if (!taskId) return;
     let cancelled = false;
     void json<{ suggestions: Array<{ label: string; prompt: string }> }>(`/api/tasks/${encodeURIComponent(taskId)}/suggestions`)
       .then((result) => { if (!cancelled) setSuggestions(result.suggestions); })

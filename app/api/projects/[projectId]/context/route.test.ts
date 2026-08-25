@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -29,20 +30,20 @@ beforeEach(() => {
 describe("GET /api/projects/:projectId/context", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ projectId: "proj_1" }) });
+    const res = await GET(new NextRequest("http://localhost"), { params: Promise.resolve({ projectId: "proj_1" }) });
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when project access denied", async () => {
     mocks.getProjectAccess.mockResolvedValue(null);
-    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ projectId: "proj_bad" }) });
+    const res = await GET(new NextRequest("http://localhost"), { params: Promise.resolve({ projectId: "proj_bad" }) });
     expect(res.status).toBe(404);
   });
 
   it("returns context items", async () => {
     mocks.getProjectAccess.mockResolvedValue({ project: { userId: "user_1", workspaceId: "ws_1" } });
     mocks.find.mockReturnValue({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ contextId: "ctx_1", title: "API Spec", type: "note" }]) }) });
-    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ projectId: "proj_1" }) });
+    const res = await GET(new NextRequest("http://localhost"), { params: Promise.resolve({ projectId: "proj_1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.contextItems).toHaveLength(1);
@@ -52,14 +53,14 @@ describe("GET /api/projects/:projectId/context", () => {
 describe("POST /api/projects/:projectId/context", () => {
   it("returns 400 for invalid body", async () => {
     mocks.getProjectAccess.mockResolvedValue({ project: { userId: "user_1", workspaceId: "ws_1" } });
-    const res = await POST(new Request("http://localhost", { method: "POST", body: JSON.stringify({ type: "note", title: "" }) }) as any, { params: Promise.resolve({ projectId: "proj_1" }) });
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ type: "note", title: "" }) }), { params: Promise.resolve({ projectId: "proj_1" }) });
     expect(res.status).toBe(400);
   });
 
   it("creates a note context item", async () => {
     mocks.getProjectAccess.mockResolvedValue({ project: { userId: "user_1", workspaceId: "ws_1" } });
     mocks.create.mockResolvedValue({ contextId: "ctx_new", projectId: "proj_1", type: "note", title: "Test Note", content: "Hello" });
-    const res = await POST(new Request("http://localhost", { method: "POST", body: JSON.stringify({ type: "note", title: "Test Note", content: "Hello" }) }) as any, { params: Promise.resolve({ projectId: "proj_1" }) });
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ type: "note", title: "Test Note", content: "Hello" }) }), { params: Promise.resolve({ projectId: "proj_1" }) });
     expect(res.status).toBe(201);
   });
 });

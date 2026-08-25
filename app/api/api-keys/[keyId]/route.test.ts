@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -24,13 +25,13 @@ beforeEach(() => {
 describe("DELETE /api/api-keys/[keyId]", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await DELETE(new Request("http://localhost"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when key is not found or already revoked", async () => {
     mocks.updateOne.mockResolvedValue({ matchedCount: 0 });
-    const res = await DELETE(new Request("http://localhost"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.code).toBe("API_KEY_NOT_FOUND");
@@ -38,7 +39,7 @@ describe("DELETE /api/api-keys/[keyId]", () => {
 
   it("revokes an active key", async () => {
     mocks.updateOne.mockResolvedValue({ matchedCount: 1 });
-    const res = await DELETE(new Request("http://localhost"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.revoked).toBe(true);

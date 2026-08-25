@@ -39,7 +39,7 @@ beforeEach(() => {
 });
 
 function makeRequest(query = "") {
-  return new NextRequest(`http://localhost/api/runs${query ? `?${query}` : ""}`) as any;
+  return new NextRequest(`http://localhost/api/runs${query ? `?${query}` : ""}`);
 }
 
 describe("GET /api/runs", () => {

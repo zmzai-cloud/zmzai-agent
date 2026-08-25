@@ -28,7 +28,7 @@ function makeRequest(body: Record<string, unknown>) {
     method: "POST",
     body: JSON.stringify(body),
     headers: { "content-type": "application/json" },
-  }) as any;
+  });
 }
 
 beforeEach(() => {

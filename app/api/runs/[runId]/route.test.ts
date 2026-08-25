@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -43,13 +44,13 @@ beforeEach(() => {
 describe("GET /api/runs/[runId]", () => {
   it("returns 401 when unauthenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new Request("http://localhost/api/runs/run_1"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/runs/run_1"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when run not found", async () => {
     mocks.runFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
-    const res = await GET(new Request("http://localhost/api/runs/run_missing"), ctx("run_missing"));
+    const res = await GET(new NextRequest("http://localhost/api/runs/run_missing"), ctx("run_missing"));
     expect(res.status).toBe(404);
   });
 
@@ -59,7 +60,7 @@ describe("GET /api/runs/[runId]", () => {
     mocks.taskFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ taskId: "task_1", title: "My Task", projectId: null }) }) });
     mocks.wsFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ workspaceId: "ws_1", name: "Test WS" }) }) });
 
-    const res = await GET(new Request("http://localhost/api/runs/run_1"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/runs/run_1"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.run.runId).toBe("run_1");
@@ -84,7 +85,7 @@ describe("GET /api/runs/[runId]", () => {
       },
     ]);
 
-    const res = await GET(new Request("http://localhost/api/runs/run_1"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/runs/run_1"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.toolTimeline).toHaveLength(1);
@@ -99,7 +100,7 @@ describe("GET /api/runs/[runId]", () => {
     mocks.wsFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ workspaceId: "ws_1", name: "WS" }) }) });
     mocks.usageAggregate.mockReturnValue(Promise.resolve([{ _id: null, inputTokens: 5000, outputTokens: 2000, cacheReadTokens: 1000, cacheWriteTokens: 500, totalTokens: 8500, eventCount: 3 }]));
 
-    const res = await GET(new Request("http://localhost/api/runs/run_1"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/runs/run_1"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.run.status).toBe("failed");

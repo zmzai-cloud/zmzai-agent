@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -27,13 +28,13 @@ beforeEach(() => {
 describe("GET /api/webhooks/.../deliveries", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new Request("http://localhost"), ctx());
+    const res = await GET(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when webhook not found", async () => {
     mocks.exists.mockResolvedValue(false);
-    const res = await GET(new Request("http://localhost"), ctx());
+    const res = await GET(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
   });
 
@@ -51,7 +52,7 @@ describe("GET /api/webhooks/.../deliveries", () => {
         }),
       }),
     });
-    const res = await GET(new Request("http://localhost"), ctx());
+    const res = await GET(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.deliveries).toHaveLength(2);
@@ -61,7 +62,7 @@ describe("GET /api/webhooks/.../deliveries", () => {
 
   it("returns empty deliveries when none exist", async () => {
     mocks.find.mockReturnValue({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) }) });
-    const res = await GET(new Request("http://localhost"), ctx());
+    const res = await GET(new NextRequest("http://localhost"), ctx());
     const body = await res.json();
     expect(body.deliveries).toEqual([]);
   });

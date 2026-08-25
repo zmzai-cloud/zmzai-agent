@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -29,7 +30,7 @@ describe("DELETE /api/automations/:automationId", () => {
   });
 
   it("removes execution and inbound event history with the automation", async () => {
-    const response = await DELETE(new Request("http://localhost/api/automations/automation_1"), { params: Promise.resolve({ automationId: "automation_1" }) });
+    const response = await DELETE(new NextRequest("http://localhost/api/automations/automation_1"), { params: Promise.resolve({ automationId: "automation_1" }) });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ deleted: true });

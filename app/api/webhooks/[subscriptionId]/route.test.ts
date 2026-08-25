@@ -31,25 +31,25 @@ beforeEach(() => {
 describe("PATCH /api/webhooks/[subscriptionId]", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await PATCH(new NextRequest("http://localhost", { method: "PATCH", body: "{}" }) as any, ctx());
+    const res = await PATCH(new NextRequest("http://localhost", { method: "PATCH", body: "{}" }), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 400 for invalid body", async () => {
-    const res = await PATCH(new NextRequest("http://localhost", { method: "PATCH", body: JSON.stringify({ status: "invalid" }) }) as any, ctx());
+    const res = await PATCH(new NextRequest("http://localhost", { method: "PATCH", body: JSON.stringify({ status: "invalid" }) }), ctx());
     expect(res.status).toBe(400);
   });
 
   it("returns 404 when webhook not found", async () => {
     mocks.findOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
-    const res = await PATCH(new NextRequest("http://localhost", { method: "PATCH", body: JSON.stringify({ status: "paused" }) }) as any, ctx());
+    const res = await PATCH(new NextRequest("http://localhost", { method: "PATCH", body: JSON.stringify({ status: "paused" }) }), ctx());
     expect(res.status).toBe(404);
   });
 
   it("updates webhook status", async () => {
     const now = new Date();
     mocks.findOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({ subscriptionId: "whs_1", workspaceId: "ws_1", name: "Hook", url: "https://example.com", events: ["task.completed"], status: "paused", secretPrefix: "whsec_", lastDeliveredAt: null, lastError: null, createdAt: now }) });
-    const res = await PATCH(new NextRequest("http://localhost", { method: "PATCH", body: JSON.stringify({ status: "paused" }) }) as any, ctx());
+    const res = await PATCH(new NextRequest("http://localhost", { method: "PATCH", body: JSON.stringify({ status: "paused" }) }), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.subscription.status).toBe("paused");
@@ -59,13 +59,13 @@ describe("PATCH /api/webhooks/[subscriptionId]", () => {
 describe("DELETE /api/webhooks/[subscriptionId]", () => {
   it("returns 404 when webhook not found", async () => {
     mocks.deleteOne.mockResolvedValue({ deletedCount: 0 });
-    const res = await DELETE(new Request("http://localhost"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
   });
 
   it("deletes a webhook subscription", async () => {
     mocks.deleteOne.mockResolvedValue({ deletedCount: 1 });
-    const res = await DELETE(new Request("http://localhost"), ctx());
+    const res = await DELETE(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.deleted).toBe(true);

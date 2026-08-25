@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -36,13 +37,13 @@ beforeEach(() => {
 describe("POST /api/webhooks/.../retry", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when webhook does not belong to user", async () => {
     mocks.exists.mockResolvedValue(false);
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.code).toBe("WEBHOOK_NOT_FOUND");
@@ -50,7 +51,7 @@ describe("POST /api/webhooks/.../retry", () => {
 
   it("returns 404 when delivery is not found", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.code).toBe("DELIVERY_NOT_FOUND");
@@ -58,7 +59,7 @@ describe("POST /api/webhooks/.../retry", () => {
 
   it("returns 422 when delivery is not failed", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ deliveryId: "del_1", status: "delivered" }) });
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(422);
     const body = await res.json();
     expect(body.code).toBe("DELIVERY_NOT_RETRYABLE");
@@ -66,7 +67,7 @@ describe("POST /api/webhooks/.../retry", () => {
 
   it("resets a failed delivery to pending", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ deliveryId: "del_1", status: "failed", attempts: 3 }) });
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({ deliveryId: "del_1", status: "pending" });
@@ -78,7 +79,7 @@ describe("POST /api/webhooks/.../retry", () => {
 
   it("allows retrying a delivery with status 'failed' regardless of attempts count", async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ deliveryId: "del_1", status: "failed", attempts: 0 }) });
-    const res = await POST(new Request("http://localhost"), ctx());
+    const res = await POST(new NextRequest("http://localhost"), ctx());
     expect(res.status).toBe(200);
   });
 });

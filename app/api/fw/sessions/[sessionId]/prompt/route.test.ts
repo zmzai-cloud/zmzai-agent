@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -41,7 +42,7 @@ const promptBody = (overrides?: Record<string, unknown>) =>
   JSON.stringify({ text: "Hello agent", ...overrides });
 
 const promptReq = (sessionId = "sess_1", body = promptBody()) =>
-  new Request(`http://localhost/api/fw/sessions/${sessionId}/prompt`, {
+  new NextRequest(`http://localhost/api/fw/sessions/${sessionId}/prompt`, {
     method: "POST",
     body,
     headers: { "content-type": "application/json" },
@@ -61,13 +62,13 @@ beforeEach(() => {
 describe("POST /api/fw/sessions/.../prompt", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await POST(promptReq() as any, ctx());
+    const res = await POST(promptReq(), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when session does not exist", async () => {
     mocks.getSession.mockResolvedValue(null);
-    const res = await POST(promptReq() as any, ctx());
+    const res = await POST(promptReq(), ctx());
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.code).toBe("SESSION_NOT_FOUND");
@@ -75,13 +76,13 @@ describe("POST /api/fw/sessions/.../prompt", () => {
 
   it("returns 400 for invalid prompt body", async () => {
     mocks.getSession.mockResolvedValue({ sessionId: "sess_1", userId: "user_1" });
-    const res = await POST(promptReq("sess_1", promptBody({ text: "" })) as any, ctx());
+    const res = await POST(promptReq("sess_1", promptBody({ text: "" })), ctx());
     expect(res.status).toBe(400);
   });
 
   it("submits a prompt successfully for session owner", async () => {
     mocks.getSession.mockResolvedValue({ sessionId: "sess_1", userId: "user_1" });
-    const res = await POST(promptReq() as any, ctx());
+    const res = await POST(promptReq(), ctx());
     expect(res.status).toBe(202);
     const body = await res.json();
     expect(body.accepted).toBe(true);
@@ -93,7 +94,7 @@ describe("POST /api/fw/sessions/.../prompt", () => {
   it("passes agent and images when provided", async () => {
     mocks.getSession.mockResolvedValue({ sessionId: "sess_1", userId: "user_1" });
     const images = [{ url: "data:image/png;base64,abc", mediaType: "image/png" }];
-    const res = await POST(promptReq("sess_1", promptBody({ agent: "researcher", images })) as any, ctx());
+    const res = await POST(promptReq("sess_1", promptBody({ agent: "researcher", images })), ctx());
     expect(res.status).toBe(202);
     expect(promptRunner).toHaveBeenCalledWith("sess_1", expect.objectContaining({
       text: "Hello agent",
@@ -112,7 +113,7 @@ describe("POST /api/fw/sessions/.../prompt", () => {
       .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(taskData) }); // TaskModel.findOne
     mocks.getProjectAccess.mockResolvedValue(null);
 
-    const res = await POST(promptReq() as any, ctx());
+    const res = await POST(promptReq(), ctx());
     expect(res.status).toBe(404);
   });
 
@@ -126,7 +127,7 @@ describe("POST /api/fw/sessions/.../prompt", () => {
     mocks.getProjectAccess.mockResolvedValue({ role: "editor" });
     mocks.canRunProject.mockReturnValue(true);
 
-    const res = await POST(promptReq() as any, ctx());
+    const res = await POST(promptReq(), ctx());
     expect(res.status).toBe(202);
   });
 
@@ -145,7 +146,7 @@ describe("POST /api/fw/sessions/.../prompt", () => {
       }),
     });
 
-    await POST(promptReq() as any, ctx());
+    await POST(promptReq(), ctx());
     expect(mocks.ensureRunForPrompt).toHaveBeenCalledWith(
       expect.anything(),
       "Hello agent",

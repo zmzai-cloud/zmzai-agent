@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -34,19 +35,19 @@ beforeEach(() => {
 describe("GET /api/workspaces/[workspaceId]/usage", () => {
   it("returns 401 when unauthenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new Request("http://localhost/api/workspaces/ws_1/usage"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/workspaces/ws_1/usage"), ctx());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when workspace not found", async () => {
     mocks.wsFindOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) });
-    const res = await GET(new Request("http://localhost/api/workspaces/ws_1/usage"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/workspaces/ws_1/usage"), ctx());
     expect(res.status).toBe(404);
   });
 
   it("returns empty usage data when no events exist", async () => {
     mocks.usageAggregate.mockReturnValue(Promise.resolve([]));
-    const res = await GET(new Request("http://localhost/api/workspaces/ws_1/usage"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/workspaces/ws_1/usage"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.summary).toEqual({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, totalTokens: 0, eventCount: 0 });
@@ -65,7 +66,7 @@ describe("GET /api/workspaces/[workspaceId]/usage", () => {
     mocks.taskFind.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ taskId: "task_1", projectId: "proj_1", title: "Test" }]) }) });
     mocks.projFind.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ projectId: "proj_1", name: "My Project" }]) }) });
 
-    const res = await GET(new Request("http://localhost/api/workspaces/ws_1/usage"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/workspaces/ws_1/usage"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
 
@@ -85,7 +86,7 @@ describe("GET /api/workspaces/[workspaceId]/usage", () => {
       .mockReturnValueOnce(Promise.resolve([{ _id: "task_no_proj", inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, totalTokens: 150 }]));
     mocks.taskFind.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ taskId: "task_no_proj", projectId: null, title: "No Project Task" }]) }) });
 
-    const res = await GET(new Request("http://localhost/api/workspaces/ws_1/usage"), ctx());
+    const res = await GET(new NextRequest("http://localhost/api/workspaces/ws_1/usage"), ctx());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.byProject).toHaveLength(1);

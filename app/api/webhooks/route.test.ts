@@ -45,7 +45,7 @@ beforeEach(() => {
 describe("GET /api/webhooks", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
-    const res = await GET(new NextRequest("http://localhost/api/webhooks") as any);
+    const res = await GET(new NextRequest("http://localhost/api/webhooks"));
     expect(res.status).toBe(401);
   });
 
@@ -60,7 +60,7 @@ describe("GET /api/webhooks", () => {
         }),
       }),
     });
-    const res = await GET(new NextRequest("http://localhost/api/webhooks") as any);
+    const res = await GET(new NextRequest("http://localhost/api/webhooks"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.subscriptions).toHaveLength(1);
@@ -69,34 +69,34 @@ describe("GET /api/webhooks", () => {
 
   it("filters by workspaceId", async () => {
     mocks.find.mockReturnValue({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) });
-    await GET(new NextRequest("http://localhost/api/webhooks?workspaceId=ws_1") as any);
+    await GET(new NextRequest("http://localhost/api/webhooks?workspaceId=ws_1"));
     expect(mocks.find).toHaveBeenCalledWith(expect.objectContaining({ workspaceId: "ws_1" }));
   });
 });
 
 describe("POST /api/webhooks", () => {
   it("returns 400 for invalid body", async () => {
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ name: "" }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ name: "" }) }));
     expect(res.status).toBe(400);
   });
 
   it("returns 404 when workspace does not exist", async () => {
     mocks.getWorkspace.mockResolvedValue(null);
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_bad", name: "Hook", url: "https://example.com", events: ["task.completed"] }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_bad", name: "Hook", url: "https://example.com", events: ["task.completed"] }) }));
     expect(res.status).toBe(404);
   });
 
   it("returns 400 when URL is not valid", async () => {
     mocks.getWorkspace.mockResolvedValue({ workspaceId: "ws_1" });
     mocks.normalizeUrl.mockReturnValue(null);
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", name: "Hook", url: "http://bad", events: ["task.completed"] }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", name: "Hook", url: "http://bad", events: ["task.completed"] }) }));
     expect(res.status).toBe(400);
   });
 
   it("returns 422 when URL is not publicly accessible", async () => {
     mocks.getWorkspace.mockResolvedValue({ workspaceId: "ws_1" });
     mocks.assertPublic.mockRejectedValue(new Error("Host is not publicly accessible"));
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", name: "Hook", url: "https://example.com", events: ["task.completed"] }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", name: "Hook", url: "https://example.com", events: ["task.completed"] }) }));
     expect(res.status).toBe(422);
   });
 
@@ -105,7 +105,7 @@ describe("POST /api/webhooks", () => {
     const now = new Date();
     mocks.generateSecret.mockReturnValue({ encrypted: "enc", plaintext: "whsec_secret", prefix: "whsec_" });
     mocks.create.mockResolvedValue({ subscriptionId: "whs_new", workspaceId: "ws_1", name: "Hook", url: "https://example.com", events: ["task.completed"], status: "active", secretPrefix: "whsec_", lastDeliveredAt: null, lastError: null, createdAt: now });
-    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", name: "Hook", url: "https://example.com", events: ["task.completed"] }) }) as any);
+    const res = await POST(new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ workspaceId: "ws_1", name: "Hook", url: "https://example.com", events: ["task.completed"] }) }));
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.subscription.id).toBe("whs_new");

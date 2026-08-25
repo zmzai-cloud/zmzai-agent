@@ -34,13 +34,13 @@ beforeEach(() => {
 describe("GET /v1/models", () => {
   it("returns 401 when API key is invalid", async () => {
     mocks.resolveKey.mockResolvedValue({ response: new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }) });
-    const res = await GET(new NextRequest("http://localhost/api/v1/models") as any);
+    const res = await GET(new NextRequest("http://localhost/api/v1/models"));
     expect(res.status).toBe(401);
   });
 
   it("returns 503 when relay secret is not configured", async () => {
     mocks.getEnv.mockReturnValue({ RELAY_AGENT_URL: "https://relay.test.com", RELAY_AGENT_SERVICE_SECRET_CURRENT: null });
-    const res = await GET(new NextRequest("http://localhost/api/v1/models") as any);
+    const res = await GET(new NextRequest("http://localhost/api/v1/models"));
     expect(res.status).toBe(503);
   });
 
@@ -55,7 +55,7 @@ describe("GET /v1/models", () => {
       }),
     });
 
-    const res = await GET(new NextRequest("http://localhost/api/v1/models") as any);
+    const res = await GET(new NextRequest("http://localhost/api/v1/models"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.object).toBe("list");
@@ -67,7 +67,7 @@ describe("GET /v1/models", () => {
 
   it("returns 502 when relay is unreachable", async () => {
     mocks.fetchMock.mockRejectedValue(new Error("network error"));
-    const res = await GET(new NextRequest("http://localhost/api/v1/models") as any);
+    const res = await GET(new NextRequest("http://localhost/api/v1/models"));
     expect(res.status).toBe(502);
   });
 });

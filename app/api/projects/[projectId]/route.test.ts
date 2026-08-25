@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -68,7 +69,7 @@ describe("DELETE /api/projects/:projectId", () => {
   });
 
   it("detaches tasks and research while removing project-owned records", async () => {
-    const response = await DELETE(new Request("http://localhost/api/projects/project_1"), { params: Promise.resolve({ projectId: "project_1" }) });
+    const response = await DELETE(new NextRequest("http://localhost/api/projects/project_1"), { params: Promise.resolve({ projectId: "project_1" }) });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ deleted: true });
@@ -89,7 +90,7 @@ describe("DELETE /api/projects/:projectId", () => {
   it("does not delete a project for a non-owner", async () => {
     mocks.access.mockResolvedValue({ role: "editor", project: { projectId: "project_1" } });
 
-    const response = await DELETE(new Request("http://localhost/api/projects/project_1"), { params: Promise.resolve({ projectId: "project_1" }) });
+    const response = await DELETE(new NextRequest("http://localhost/api/projects/project_1"), { params: Promise.resolve({ projectId: "project_1" }) });
 
     expect(response.status).toBe(403);
     expect(mocks.projectDeleteOne).not.toHaveBeenCalled();
