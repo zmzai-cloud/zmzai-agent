@@ -76,7 +76,8 @@ function CodeExample({ title, language, code }: { title: string; language: strin
   return (
     <div className="mt-3">
       <small className="mb-1.5 block text-xs font-semibold text-ink-3">{title}</small>
-      <CodeBlock code={code} language={language} maxHeight="360px" />
+      {/* 文档代码示例较短，不设 maxHeight，避免长示例被纵向裁剪 */}
+      <CodeBlock code={code} language={language} />
     </div>
   );
 }
