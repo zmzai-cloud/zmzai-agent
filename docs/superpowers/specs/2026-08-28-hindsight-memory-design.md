@@ -50,7 +50,7 @@ zmzai 生态需要一套知识/记忆底座：先升级 agent 的长期记忆能
 │   - PostgreSQL/pg0 内置，零外部依赖                            │
 │   - LLM 抽取走 relay: HINDSIGHT_API_LLM_PROVIDER=              │
 │     openai-compatible → m.zmzai.cloud/v1 (deepseek 低价渠道)   │
-│   - bank_id = ws-<workspaceId>（严格隔离）                      │
+│   - bank_id = <workspaceId>（原值，自带 ws_ 前缀，严格隔离）  │
 │   - 每 bank 自带 MCP endpoint                                   │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -92,12 +92,13 @@ zmzai 生态需要一套知识/记忆底座：先升级 agent 的长期记忆能
 
 ### Retain（写路径）
 
-- 触发：**runLoop 所有终态**（正常 idle、abort、质量门失败均触发——失败经验往往最有价值；挂 runner 侧而非 product-event-log 的 idle 成功分支，避免遗漏）
+- 触发：**runLoop 所有终态**（正常 idle、abort、质量门失败、waiting_input 均触发——失败经验往往最有价值；挂 runner 侧而非 product-event-log 的 idle 成功分支，避免遗漏）
+- 挂载形态：经 `RunnerDeps.hooks` 的 onRunEnd 类钩子实现（framework 侧只发终态信号，runId 由产品侧查询 RunModel 获得）
 - 流程：
-  1. **边界取本次 run 新增消息**：runLoop 结束时直接使用内存中本次 run 新增的 user/assistant 消息（不整段取 store.getMessages——那会返回全会话历史，导致重复 retain；排除 tool 噪音，上限 8k 字符）
+  1. **边界取本次 run 新增消息**：runLoop 结束时直接使用内存中本次 run 新增的 user/assistant 消息（不整段取 store.getMessages——那会返回全会话历史，导致重复 retain；排除 tool 噪音与合成占位消息如重试提示语，上限 8k 字符）
   2. `retain(bank_id, content, context="session <id> run")` —— fire-and-forget（`void promise`）
   3. 事实抽取、实体/时间线归一、consolidation 全部由 hindsight 后台完成
-- 防重复：runId 级 in-flight set（进程内去重；pm2 单实例下成立）
+- 防重复：runId 级 in-flight set（进程内去重；去重键必须用 runId 而非 sessionId，否则连续排队 run 的第二条记忆会被误丢；pm2 单实例下成立）
 - 失败策略：超时 5s、异常仅 `console.warn`，永不影响 run 状态与 automation 投影
 
 ### 错误降级
@@ -148,7 +149,7 @@ HINDSIGHT_ADMIN_USER_IDS=                  # 可见 UI 隧道指引的白名单
 - MemoryProvider 接口 + noop 实现行为
 - recall 结果 → context section 格式化与 4k 截断
 - retain 输入 transcript 组装与 8k 截断，且**只包含本次 run 新增消息**
-- 排队 prompt 出队续跑与 automation 入口同样触发 memoryContextFor（mock provider）
+- 排队 prompt 出队续跑与 automation / wide-research 入口同样触发 memoryContextFor（mock provider）
 - abort / 质量门失败终态同样触发 retain
 
 不测 hindsight 本身；部署后用一次真实会话人工验收端到端效果。
