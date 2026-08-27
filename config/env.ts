@@ -5,6 +5,12 @@ const optionalString = z.preprocess(
   z.string().optional(),
 );
 
+/** 服务间密钥（workos → agent）：非空时必须 ≥32 字符。 */
+const serviceSecret = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().min(32).optional(),
+);
+
 const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.string().url().default("http://localhost:3000"),
@@ -18,6 +24,9 @@ const environmentSchema = z.object({
   SANDBOX_AGENT_URL: z.string().url().default("https://z.zmzai.cloud"),
   SANDBOX_AGENT_SERVICE_SECRET_CURRENT: optionalString,
   AUTOMATION_SCHEDULER_SECRET: optionalString,
+  // workos（i.zmzai.cloud）服务间拉取任务/智能体摘要用的密钥，双侧同名。
+  WORKOS_SERVICE_SECRET_CURRENT: serviceSecret,
+  WORKOS_SERVICE_SECRET_PREVIOUS: serviceSecret,
   GITHUB_OAUTH_CLIENT_ID: optionalString,
   GITHUB_OAUTH_CLIENT_SECRET: optionalString,
 });
