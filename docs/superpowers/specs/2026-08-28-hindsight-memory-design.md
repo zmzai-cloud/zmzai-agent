@@ -39,10 +39,10 @@ zmzai 生态需要一套知识/记忆底座：先升级 agent 的长期记忆能
 │   │                   (@vectorize-io/hindsight-client)         │
 │   └─ noop.ts          降级实现（服务不可用时静默跳过）          │
 │                                                                │
-│  触点 1 · recall:  prompt 入口 recall(当前任务) →               │
-│            结果作为独立 context 消息拼进本次运行的上下文        │
-│  触点 2 · retain:  product-event-log.ts 在 run 结束(idle)时    │
-│            异步 retain 本次会话经验（不阻塞、失败只告警）        │
+│  触点 1 · recall:  RunnerDeps 注入 memoryContextFor 回调，       │
+│            runLoop 启动前统一执行（覆盖 route/队列/automation）  │
+│  触点 2 · retain:  runLoop 终态时用本次新增消息异步 retain，     │
+│            覆盖所有终态（含 abort/质量门失败，不阻塞、只告警）   │
 └──────────────┬─────────────────────────────────────────────────┘
                │ HTTP (HK 服务器内网)
 ┌──────────────▼─────────────────────────────────────────────────┐
@@ -66,17 +66,17 @@ zmzai 生态需要一套知识/记忆底座：先升级 agent 的长期记忆能
 
 ### bank 生命周期
 
-- workspace 创建 → `ensureBank`（workspace 名作为 bank 背景上下文）
+- workspace 创建/首次使用 → **幂等 lazy ensureBank**（每次 retain/recall 前检查，创建钩子仅作预热）——workspace 有 `createWorkspace` 与 `ensureDefaultWorkspace` 两条创建路径，lazy ensure 天然全覆盖
 - workspace 删除 → 调 hindsight 删 bank（fire-and-forget）
-- bank_id 稳定性依赖 workspaceId 不可变（现有 schema 满足）
+- bank_id 直接使用 `workspaceId` 原值（其本身已带 `ws_` 前缀，不再叠加前缀）
 
 ## 3. 数据流
 
 ### Recall（读路径）
 
-- 触发：每次用户 prompt 进入 runner（prompt route 之后、runLoop 启动前）
+- 触发：**runLoop 启动前统一执行**，通过 `RunnerDeps` 注入产品回调 `memoryContextFor?: (session, text) => Promise<string | undefined>`（与现有 `streamFnFor`/`modelFor`/`workspaceFor` 注入模式一致）。这一个点位同时覆盖 prompt route、排队 prompt 出队续跑、automation 定时运行、wide-research 四条路径——若挂在 prompt route 或 `runner.prompt()` input 上，排队路径（QueuedPrompt 只保留 `{text, agent}`）与非 route 调用方（automation-execution.ts、wide-research.ts）会静默丢失记忆
 - 流程：
-  1. `bank_id = ws-<session.workspaceId>`
+  1. `bank_id = session.workspaceId`
   2. `recall(bank_id, query=prompt 文本, max_facts≈12)`
   3. 格式化为独立 context 消息注入（不拼 systemPrompt——那是 workspace 级静态的）：
 
@@ -86,18 +86,18 @@ zmzai 生态需要一套知识/记忆底座：先升级 agent 的长期记忆能
   ...
   ```
 
-- 注入机制：`runner.prompt()` 的 input 扩展可选 `memoryContext?: string` 字段（与现有 `images` 同级），runLoop 追加到 `initialState.messages` 头部。framework 只加通用字段，不感知 hindsight
+- 注入机制：runLoop 在构建 `initialState.messages` 前调用 `memoryContextFor`，返回值追加到消息头部。framework 只认识「返回一段文本的回调」，不感知 hindsight
 - 预算：recall 结果硬上限 4k 字符，超出截断。与静态预算（16k 知识 + 24k skill 单条 + 80k skills 总量）互不挤占
 - 超时：800ms 放弃本次召回
 
 ### Retain（写路径）
 
-- 触发：`framework/core/events/product-event-log.ts` 现有 `session.status === "idle"` 收尾分支（与 qualityGate / automation 投影并列）
+- 触发：**runLoop 所有终态**（正常 idle、abort、质量门失败均触发——失败经验往往最有价值；挂 runner 侧而非 product-event-log 的 idle 成功分支，避免遗漏）
 - 流程：
-  1. 读本次 run 消息（store.getMessages，排除 tool 噪音，取 user/assistant 正文，上限 8k 字符）
+  1. **边界取本次 run 新增消息**：runLoop 结束时直接使用内存中本次 run 新增的 user/assistant 消息（不整段取 store.getMessages——那会返回全会话历史，导致重复 retain；排除 tool 噪音，上限 8k 字符）
   2. `retain(bank_id, content, context="session <id> run")` —— fire-and-forget（`void promise`）
   3. 事实抽取、实体/时间线归一、consolidation 全部由 hindsight 后台完成
-- 防重复：runId 级 in-flight set（进程内去重即可；restart 重复 retain 由 hindsight 的 dedup/consolidation 消化）
+- 防重复：runId 级 in-flight set（进程内去重；pm2 单实例下成立）
 - 失败策略：超时 5s、异常仅 `console.warn`，永不影响 run 状态与 automation 投影
 
 ### 错误降级
@@ -105,37 +105,51 @@ zmzai 生态需要一套知识/记忆底座：先升级 agent 的长期记忆能
 - hindsight 不可用 = 静默无记忆，agent 功能完全不受损
 - 未配置 `HINDSIGHT_API_URL` 或 `HINDSIGHT_ENABLED=false` → noop provider，代码路径与生产一致
 
+### 数据可见性与 PII
+
+- **可见性边界声明**：bank 记忆沿 workspace 共享语义——项目成员对共享 workspace 发起运行时，recall 可见其他成员沉淀的经验（与成员本就能读 workspace 内容的现状一致，但属新增数据可见面，显式声明）
+- **Memory Defense**：MVP 即为每个 bank 开启 hindsight 内建的 per-bank Memory Defense（PII/secret 45 模式识别脱敏，opt-in、成本极低），防止用户贴入对话的 API key 等原样进入记忆库
+
+### 网络与鉴权
+
+hindsight API/UI/MCP endpoint 均无内建认证，必须收敛暴露面：
+
+- docker 仅绑 loopback：`-p 127.0.0.1:8888:8888 -p 127.0.0.1:9999:9999`，防火墙显式拒绝 8888/9999 外网入站——否则任何能推断 bank_id 的人可跨 workspace 读写/删除记忆
+- hindsight UI（:9999，可见全部 bank）不对公网开放：管理入口改为「env userId 白名单 + 提示经 SSH 隧道访问」；workspace-config 仅向白名单用户展示隧道访问指引而非直链
+- 阶段四开放 MCP/用户产品前，启用 hindsight 的 tenant/auth extension points（官方提供该扩展点）再暴露
+
 ## 4. UI
 
-- `framework/client/workspace-config.tsx` 知识库面板：保留现有手工条目管理，新增「自动记忆」折叠区 —— bank 状态（可用/不可用）、记忆条数统计、hindsight UI 入口链接（仅管理员）
+- `framework/client/workspace-config.tsx` 知识库面板：保留现有手工条目管理，新增「自动记忆」折叠区 —— bank 状态（可用/不可用）、记忆条数统计；env userId 白名单用户额外显示 hindsight UI 的 SSH 隧道访问指引（hindsight UI 无鉴权，不提供公网直链）
 - 对话页透明：recall 注入对用户不可见；「引用 N 条记忆」徽章留待后续
 - 遵循 @zmzai/theme 设计语言，禁止 emoji 图标
 
 ## 5. 配置与部署
 
-### 环境变量（zmzai-agent）
+### 环境变量（zmzai-agent，同步加入 config/env.ts 的 zod schema）
 
 ```
 HINDSIGHT_API_URL=http://127.0.0.1:8888   # HK 同机内网直连
 HINDSIGHT_ENABLED=true                     # 关闭即全链路 noop
+HINDSIGHT_ADMIN_USER_IDS=                  # 可见 UI 隧道指引的白名单
 ```
 
 ### 部署
 
-- HK 服务器：`docker run ghcr.io/vectorize-io/hindsight:latest`，`HINDSIGHT_API_LLM_PROVIDER` 指向 relay openai-compatible endpoint（deepseek 低价渠道，抽取 token 消耗大）
+- HK 服务器：`docker run ghcr.io/vectorize-io/hindsight:latest`，端口仅绑 loopback（见「网络与鉴权」）
+- hindsight LLM 抽取凭证：在 relay 申请**独立 service key**（deepseek 低价渠道），与用户计费归属严格分离——抽取 token 计入平台侧服务成本，不混入任何用户额度
 - zmzai-agent：现有 GitHub Actions → pm2 管线，无新部署单元
 - hindsight 数据卷 docker volume 持久化
 
 ## 6. 测试
 
-单元（vitest，沿用现有 97 文件 525 测试体系）：
+单元（vitest，沿用现有测试体系）：
 
 - MemoryProvider 接口 + noop 实现行为
 - recall 结果 → context section 格式化与 4k 截断
-- retain 输入 transcript 组装与 8k 截断
-- prompt route 对 memoryContext 透传（mock provider）
-
-集成：mock MemoryProvider 验证 `initialState.messages` 头部注入与 idle 收尾 retain 触发（fire-and-forget 不阻塞）。
+- retain 输入 transcript 组装与 8k 截断，且**只包含本次 run 新增消息**
+- 排队 prompt 出队续跑与 automation 入口同样触发 memoryContextFor（mock provider）
+- abort / 质量门失败终态同样触发 retain
 
 不测 hindsight 本身；部署后用一次真实会话人工验收端到端效果。
 
@@ -144,12 +158,14 @@ HINDSIGHT_ENABLED=true                     # 关闭即全链路 noop
 | 风险 | 缓解 |
 | --- | --- |
 | hindsight LLM 抽取依赖 relay 可用性 | retain 失败静默 + 降级 noop |
+| hindsight 无内建鉴权 | 端口仅绑 loopback + 防火墙拒绝外网入站 + UI 走 SSH 隧道（见「网络与鉴权」）|
+| 共享 workspace 跨成员召回 | 显式沿 workspace 共享语义 + Memory Defense 脱敏 |
 | 本地开发连不上 HK hindsight | 默认 noop，不影响 dev |
 | 引入 PG + Python 服务的新运维面 | docker 内置 pg0 零外部依赖；单容器单 volume |
-| workspace 删除后 bank 残留 | 删除时 fire-and-forget 清理；残留无害（隔离且无引用） |
+| workspace 删除后 bank 残留 | 删除时 fire-and-forget 清理；残留无害（隔离且无引用）|
 
 ## 8. 演进路线（非 MVP）
 
 1. 阶段二：reflect 集成 + mental models / knowledge pages 投影为 workspace 文档
 2. 阶段三：zmzai-cloud 开放用户知识库产品（认证 + 前端 + bank 计量计费，底座不变）
-3. 阶段四：harness / 其他客户端经每 bank MCP endpoint 直连
+3. 阶段四：harness / 其他客户端经每 bank MCP endpoint 直连（前置条件：启用 hindsight 的 tenant/auth extension points）
