@@ -27,6 +27,7 @@ type UsageSummary = { inputTokens: number; outputTokens: number; cacheReadTokens
 type UsageDaily = { date: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; totalTokens: number };
 type UsageProject = { projectId: string; projectName: string; totalTokens: number; inputTokens: number; outputTokens: number; cacheReadTokens: number; taskCount: number };
 type UsageData = { summary: UsageSummary; daily: UsageDaily[]; byProject: UsageProject[] };
+type MemoryStatus = { enabled: boolean; available: boolean; facts: number | null; isAdmin: boolean };
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, cache: "no-store" });
@@ -67,6 +68,8 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
   const [editingKbId, setEditingKbId] = useState<string | null>(null);
   const [editKbTitle, setEditKbTitle] = useState("");
   const [editKbContent, setEditKbContent] = useState("");
+  const [memory, setMemory] = useState<MemoryStatus | null>(null);
+  const [memoryOpen, setMemoryOpen] = useState(false);
 
   const remove = useCallback(async () => {
     if (!detail || deleting) return;
@@ -100,6 +103,7 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
       json<{ budget: WorkspaceBudget }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/budget`).then((body) => setBudget(body.budget)),
       json<{ knowledgeBase: KnowledgeEntry[] }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/knowledge`).then((body) => setKnowledge(body.knowledgeBase)),
       json<UsageData>(`/api/workspaces/${encodeURIComponent(workspaceId)}/usage`).then((body) => setUsage(body)).catch(() => { /* usage API optional */ }),
+      json<{ memory: MemoryStatus }>(`/api/workspaces/${encodeURIComponent(workspaceId)}/memory`).then((body) => setMemory(body.memory)).catch(() => { /* memory API optional */ }),
     ]).catch((cause) => setError(cause instanceof Error ? cause.message : "无法加载智能体配置"));
   }, [workspaceId, applyDetail]);
 
@@ -305,6 +309,27 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
               <Button type="button" size="sm" variant="secondary" disabled={!newKbTitle.trim() || !newKbContent.trim() || Boolean(knowledgeBusy)} onClick={() => void addKnowledge()}><Icon name="plus" size={13} />{knowledgeBusy === "add" ? "添加中" : "添加知识"}</Button>
             </div>
           </section>
+          {memory && (
+            <section className="mt-5 border-t border-line pt-4 text-sm">
+              <button type="button" className="flex w-full items-center justify-between text-left" aria-expanded={memoryOpen} onClick={() => setMemoryOpen((open) => !open)}>
+                <div><span className="eyebrow">自动记忆</span><strong className="mt-1 block text-ink">会话经验长期沉淀</strong></div>
+                <span className="font-mono text-xs text-ink-3">{memory.enabled ? (memory.facts === null ? "—" : `${memory.facts} 条`) : "未启用"}</span>
+              </button>
+              {memoryOpen && (
+                <div className="mt-3 space-y-2 text-xs text-ink-3">
+                  <p>Agent 自动把每次任务的经验沉淀到长期记忆，并在后续任务开始时按相关性召回注入，无需手动维护。</p>
+                  <p>状态：{memory.enabled ? (memory.available ? "已连接，正常工作中" : "已配置但服务不可用") : "未配置记忆服务"}</p>
+                  {memory.isAdmin && memory.available && (
+                    <div className="rounded-sm border border-line p-2 font-mono text-[11px] leading-relaxed">
+                      <p className="mb-1 font-sans text-ink-2">管理员：本地查看记忆库</p>
+                      <p>ssh -L 9999:127.0.0.1:9999 &lt;host&gt;</p>
+                      <p>打开 http://127.0.0.1:9999 ，bank 为 {workspaceId}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
           <section className="mt-5 border-t border-line pt-4 text-sm">
             <div className="mb-3 flex items-center justify-between"><div><span className="eyebrow">可用能力</span><strong className="mt-1 block text-ink">Skills 与 Plugins</strong></div><span className="font-mono text-xs text-ink-3">{detail.skillIds.length + detail.pluginIds.length} 已启用</span></div>
             <div className="space-y-2">

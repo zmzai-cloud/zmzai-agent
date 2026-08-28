@@ -1,3 +1,4 @@
+import { getMemoryProvider } from "@/lib/memory/provider";
 import { canonicalWorkspacePath } from "@/lib/workspace-path";
 import { WorkspaceFileModel } from "@/models/workspace-file";
 import { WorkspaceRevisionModel } from "@/models/workspace-revision";
@@ -76,6 +77,8 @@ export async function createWorkspace(input: { workspaceId: string; userId: stri
     approvalMode: "ask",
     ...(input.prompt ? { prompt: input.prompt } : {}),
   });
+  // 长期记忆 bank 随 workspace 建立（fire-and-forget，失败不阻塞建站）
+  void getMemoryProvider().ensureBank(input.workspaceId).catch(() => undefined);
   return toWorkspaceSummary(workspace);
 }
 
@@ -98,8 +101,9 @@ export async function ensureDefaultWorkspace(userId: string): Promise<void> {
   const exists = await WorkspaceModel.exists({ userId, name: "通用" }).lean();
   if (exists) return;
   const { randomUUID } = await import("node:crypto");
+  const workspaceId = `ws_${randomUUID()}`;
   await WorkspaceModel.create({
-    workspaceId: `ws_${randomUUID()}`,
+    workspaceId,
     userId,
     name: "通用",
     description: "默认通用智能体，直接描述任务即可开始。",
@@ -108,6 +112,7 @@ export async function ensureDefaultWorkspace(userId: string): Promise<void> {
     prompt: "",
     steps: 12,
   });
+  void getMemoryProvider().ensureBank(workspaceId).catch(() => undefined);
 }
 
 /** 重命名/更新描述/更新智能体配置。 */
@@ -272,6 +277,8 @@ export async function deleteWorkspace(userId: string, workspaceId: string): Prom
     if (remaining.length) return AgentApiKeyModel.updateOne({ agentApiKeyId: key.agentApiKeyId }, { $set: { workspaceIds: remaining } });
     return AgentApiKeyModel.deleteOne({ agentApiKeyId: key.agentApiKeyId });
   }));
+  // 同步清理长期记忆 bank（fire-and-forget）
+  void getMemoryProvider().deleteBank(workspaceId).catch(() => undefined);
   return true;
 }
 
