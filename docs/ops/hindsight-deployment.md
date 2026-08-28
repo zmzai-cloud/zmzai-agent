@@ -99,8 +99,8 @@ API 层（服务器上）：
 curl -X POST http://127.0.0.1:8888/v1/default/banks/ws_smoke/memories \
   -H 'content-type: application/json' \
   -d '{"items":[{"content":"冒烟测试：用户偏好深色主题","context":"smoke"}]}'
-# recall
-curl -X POST http://127.0.0.1:8888/v1/default/banks/ws_smoke/recall \
+# recall（注意是 /memories/recall，部署实测确认）
+curl -X POST http://127.0.0.1:8888/v1/default/banks/ws_smoke/memories/recall \
   -H 'content-type: application/json' -d '{"query":"用户偏好什么主题","max_tokens":500}'
 # 结果应命中上面那条；验证完删除
 curl -X DELETE http://127.0.0.1:8888/v1/default/banks/ws_smoke
