@@ -13,7 +13,22 @@ hindsight 的 API（:8888）、UI（:9999）、每 bank MCP endpoint 均**无内
 
 - docker 端口**仅绑 loopback**（见下文 docker run 命令）
 - 防火墙/安全组**显式拒绝** 8888/9999 的外网入站（双保险）
-- 管理查看走 SSH 隧道，UI 直链永不暴露给终端用户
+- 管理入口：**记忆中心** https://k.zmzai.cloud（独立应用 zmzai-memory，zmzai 账号登录 + workspace 隔离权限，见下方说明与 spec `2026-08-28-zmzai-memory-design.md`）
+- 原版 UI（:9999）：SSH 隧道兜底（`ssh -L 9999:127.0.0.1:9999 root@149.88.84.189`），不再对外反代
+- UI 直链（裸 9999）永不暴露给终端用户
+
+### 0.1 记忆中心（zmzai-memory，k.zmzai.cloud）
+
+hindsight 的 zmzai 原生管理台，替代原 Basic Auth + CSS 主题注入方案：
+
+- **架构**：独立 Next.js 应用（github.com/Ulanxx/zmzai-memory），服务器 :3015，pm2 进程名 `memory`，Caddy 反代 k.zmzai.cloud → 127.0.0.1:3015（无 Basic Auth，认证在应用内）
+- **认证**：`muzhi_session` cookie（@zmzai/db 同库同 secret），未登录 307 跳 auth.zmzai.cloud；退出走 `/api/auth/logout`（清共享会话，全子域退出）
+- **权限**：bankId = workspaceId；可见 = 自己拥有的 workspace ∪ 作为成员的 workspace（只读 `zmzaiagentworkspaces`/`zmzaiagentprojectmembers`）；`HINDSIGHT_ADMIN_USER_IDS`（与 agent 同值，取自 `/opt/zmzai/envs/memory/.env.production`）白名单用户全量可见可删；删除仅 owner/admin
+- **主题**：@zmzai/theme（纯白 + 荧光绿 + MiSans）
+- **部署**：与 relay 同 CI 模式（push main → GitHub Actions build → `store/deploy memory <sha>`），env 权威副本 `/opt/zmzai/envs/memory/.env.production`（envget memory 下发给 CI 构建）
+- hindsight API 仅服务端可达（`HINDSIGHT_API_URL=http://127.0.0.1:8888`），公网永远摸不到
+
+（历史方案存档：Basic Auth + 容器内 CSS 覆盖注入的做法见 §6.5，已弃用）
 
 ## 1. HK 服务器：启动 hindsight
 
@@ -113,6 +128,39 @@ curl -X DELETE http://127.0.0.1:8888/v1/default/banks/ws_smoke
 3. 新开一个会话问「版本号格式是什么」，确认回复体现了第 1 步的偏好
 4. UI（隧道）里检查对应 bank 出现了记忆条目，且 `HINDSIGHT_ADMIN_USER_IDS`
    用户能在配置页看到条数
+
+## 6.5 （已弃用，存档）k.zmzai.cloud Basic Auth + zmzai 主题注入
+
+hindsight UI 无鉴权，公网访问必须经 Caddy 反代 + Basic Auth 保护：
+
+```caddyfile
+# /etc/caddy/Caddyfile 追加（密码 hash 用 `caddy hash-password --plaintext <pass>` 生成）
+k.zmzai.cloud {
+    basic_auth {
+        admin $2a$...
+    }
+    reverse_proxy 127.0.0.1:9999
+}
+```
+
+`caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy` 后生效；
+证书由 Caddy 自动 HTTPS 签发（需 DNS A 记录 k → 服务器 IP）。
+
+zmzai 主题注入（容器内改静态 CSS，无需重建镜像）：
+
+1. 备份：`docker cp hindsight:/app/control-plane/.next/static/chunks/1y59zki454-nm.css /tmp/hindsight-orig.css`
+2. 把主题覆盖块（.research/zmzai-theme-overlay.css：MiSans @font-face +
+   `:root:root`/`:root.dark` 变量覆盖）追加到该 CSS 文件末尾
+3. 替换 favicon：`docker cp zmzai-favicon.png hindsight:/app/control-plane/public/favicon.png`
+4. 生效即改即刷（浏览器需硬刷新，CSS 响应 immutable 一年）
+
+坑：
+
+- 覆盖块选择器必须用 `:root:root`（特异性 0,2,0）——next/font 的 `.inter_xxx`
+  类（0,1,0）会赢过普通 `:root`（0,1,0 但位置更早）
+- 该改动写在容器可写层：hindsight 镜像更新（docker rm 重建）后需重做，
+  原版 CSS 备份在容器 `/tmp/hindsight-orig.css`
+- 页面标题（"Hindsight Control Plane"）在 JS bundle 内，无法改
 
 ## 7. 回滚
 
