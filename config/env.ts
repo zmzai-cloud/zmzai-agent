@@ -29,6 +29,11 @@ const environmentSchema = z.object({
   WORKOS_SERVICE_SECRET_PREVIOUS: serviceSecret,
   GITHUB_OAUTH_CLIENT_ID: optionalString,
   GITHUB_OAUTH_CLIENT_SECRET: optionalString,
+  // hindsight 长期记忆服务（HK 同机内网直连；未配 URL 或显式 false 时全链路 noop）。
+  HINDSIGHT_API_URL: optionalString,
+  HINDSIGHT_ENABLED: optionalString,
+  // 可见 hindsight UI SSH 隧道指引的白名单（逗号分隔 userId）。
+  HINDSIGHT_ADMIN_USER_IDS: optionalString,
 });
 
 export type ServerEnvironment = z.infer<typeof environmentSchema>;
