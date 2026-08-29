@@ -1,0 +1,89 @@
+/** Permission ruleset DSL (spec §5.1).
+ *
+ *  A ruleset is an ordered list of rules; the LAST matching rule wins and the
+ *  default action when nothing matches is "ask". Config syntax mirrors
+ *  opencode.json: a bare action string, or a map of permission -> action or
+ *  pattern->action map. */
+/** Well-known permission keys (spec §5.1). Tools may introduce additional keys
+ *  (e.g. future MCP `server_*`); the engine treats keys as opaque strings and
+ *  matches them with wildcards. */
+export const PERMISSIONS = [
+    "read",
+    "edit", // covers write/edit/apply_patch
+    "bash",
+    "glob",
+    "grep",
+    "list",
+    "webfetch",
+    "connector",
+    "task",
+    "todo",
+    "external_directory",
+    "mcp", // MCP server 工具（patterns 为 server/tool）
+    "git_read", // git status/diff/log（只读，builtinDefaults 默认放行）
+    "git_write", // git commit（走审批）
+    "terminal", // 本机交互式终端 terminal_start（宿主机直接起进程，走审批）
+];
+/** Converts config syntax into a flat ruleset. Key order in the config object
+ *  is preserved, so later keys override earlier ones for overlapping matches. */
+export function rulesetFromConfig(config) {
+    if (typeof config === "string")
+        return [{ permission: "*", pattern: "*", action: config }];
+    const rules = [];
+    for (const [permission, value] of Object.entries(config)) {
+        if (typeof value === "string") {
+            rules.push({ permission, pattern: "*", action: value });
+        }
+        else {
+            for (const [pattern, action] of Object.entries(value)) {
+                rules.push({ permission, pattern, action });
+            }
+        }
+    }
+    return rules;
+}
+/** Glob-style wildcard match: `*` matches any run of characters (including
+ *  path separators), `?` matches one character. Same spirit as OpenCode's
+ *  Wildcard.match — patterns are not filesystem paths, just strings. */
+export function wildcardMatch(pattern, value) {
+    let p = 0;
+    let v = 0;
+    let star = -1;
+    let starValue = 0;
+    while (v < value.length) {
+        if (p < pattern.length && (pattern[p] === "?" || pattern[p] === value[v])) {
+            p++;
+            v++;
+        }
+        else if (p < pattern.length && pattern[p] === "*") {
+            star = p++;
+            starValue = v;
+        }
+        else if (star !== -1) {
+            p = star + 1;
+            v = ++starValue;
+        }
+        else {
+            return false;
+        }
+    }
+    while (p < pattern.length && pattern[p] === "*")
+        p++;
+    return p === pattern.length;
+}
+/** Core evaluation: last matching rule across all rulesets (in order) wins.
+ *  Later rulesets in the array have higher precedence. Default: "ask". */
+export function evaluateRules(rulesets, permission, pattern) {
+    let result = "ask";
+    for (const ruleset of rulesets) {
+        for (const rule of ruleset) {
+            if (rule.expiresAt && Date.parse(rule.expiresAt) <= Date.now())
+                continue;
+            if (wildcardMatch(rule.permission, permission) && wildcardMatch(rule.pattern, pattern)) {
+                result = rule.action;
+            }
+        }
+    }
+    return result;
+}
+//# sourceMappingURL=ruleset.js.map

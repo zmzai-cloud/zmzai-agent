@@ -1,0 +1,1 @@
+{"version":3,"file":"git.d.ts","sourceRoot":"","sources":["../../../src/core/tools/git.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,OAAO,EAAE,MAAM,UAAU,CAAC;AAExC;;;;4CAI4C;AAE5C,MAAM,MAAM,eAAe,GAAG;IAC5B,0CAA0C;IAC1C,GAAG,EAAE,MAAM,MAAM,CAAC;CACnB,CAAC;AA0DF,wBAAgB,cAAc,CAAC,OAAO,EAAE,eAAe,GAAG,OAAO,EAAE,CAsJlE"}

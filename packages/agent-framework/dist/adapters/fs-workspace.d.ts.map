@@ -1,0 +1,1 @@
+{"version":3,"file":"fs-workspace.d.ts","sourceRoot":"","sources":["../../src/adapters/fs-workspace.ts"],"names":[],"mappings":"AAAA,OAAO,EAAuC,MAAM,EAAE,MAAM,kBAAkB,CAAC;AAK/E,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,0BAA0B,CAAC;AAiC/D,wBAAgB,sBAAsB,CAAC,KAAK,EAAE;IAAE,IAAI,EAAE,MAAM,CAAA;CAAE,GAAG,cAAc,CAmD9E;AAED,OAAO,EAAE,MAAM,IAAI,YAAY,EAAE,CAAC"}

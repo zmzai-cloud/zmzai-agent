@@ -1,0 +1,1 @@
+{"version":3,"file":"subprocess-sandbox.d.ts","sourceRoot":"","sources":["../../src/adapters/subprocess-sandbox.ts"],"names":[],"mappings":"AAKA,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AA2B5D,wBAAgB,uBAAuB,CAAC,KAAK,CAAC,EAAE;IAC9C,0CAA0C;IAC1C,aAAa,CAAC,EAAE,MAAM,GAAG,CAAC,MAAM,MAAM,GAAG,IAAI,GAAG,SAAS,CAAC,CAAC;CAC5D,GAAG,eAAe,CAiIlB"}

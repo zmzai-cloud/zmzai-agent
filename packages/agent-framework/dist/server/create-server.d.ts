@@ -1,0 +1,56 @@
+import { SessionRunner } from "../core/runtime/runner.js";
+import { AgentRegistry } from "../core/agent/registry.js";
+import type { SessionStore } from "../core/session/store.js";
+import type { EventLog } from "../core/events/bus.js";
+import type { WorkspaceFiles } from "../core/tools/context.js";
+import type { SandboxExecutor } from "../adapters/index.js";
+import type { SessionInfo, ModelRef } from "../core/session/types.js";
+import type { ModelProvider } from "../adapters/index.js";
+/** createServer (M5 spec §1/§4): assembles a self-contained agent framework
+ *  from injected backends. The product binds Mongo store + relay provider +
+ *  OpenSandbox; the CLI binds JSONL store + OpenAI provider + subprocess
+ *  sandbox + FS workspace. Either way the returned object is the whole
+ *  framework: runner, store, event log, registry. */
+export type FrameworkDeps = {
+    store: SessionStore;
+    eventLog: EventLog;
+    modelProvider: ModelProvider;
+    workspaceFor: (session: SessionInfo) => WorkspaceFiles;
+    sandbox?: SandboxExecutor;
+    registry?: AgentRegistry;
+    loadWorkspaceAgents?: (session: SessionInfo) => Promise<import("../core/agent/registry.js").AgentInfo[]>;
+    /** Host-injected tools (desktop fs/shell, MCP server tools…). Read at every
+     *  run, so mutating the array between prompts takes effect on the next run. */
+    localTools?: import("../core/tools/def.js").AnyToolDef[];
+    /** 生命周期钩子（P0）：observe/block，见 core/runtime/lifecycle.ts。 */
+    hooks?: import("../core/runtime/lifecycle.js").LifecycleHook[];
+    subagentDepth?: number;
+    compaction?: {
+        enabled: boolean;
+        contextWindow: number;
+        summaryModel: import("@earendil-works/pi-ai").Model<import("@earendil-works/pi-ai").Api> | null;
+    };
+    leaseStore?: {
+        stamp(sessionId: string, owner: string, expiresAt: Date): Promise<void>;
+        clear(sessionId: string): Promise<void>;
+    };
+};
+export type AgentFramework = {
+    runner: SessionRunner;
+    store: SessionStore;
+    eventLog: EventLog;
+    registry: AgentRegistry;
+    /** Creates a session bound to a workspace + user, optionally with an initial
+     *  prompt that starts running immediately. */
+    createSession(input: {
+        userId: string;
+        workspaceId: string;
+        agent?: string;
+        model: ModelRef;
+        prompt?: string;
+        parentId?: string;
+        title?: string;
+    }): Promise<SessionInfo>;
+};
+export declare function createServer(deps: FrameworkDeps): AgentFramework;
+//# sourceMappingURL=create-server.d.ts.map
