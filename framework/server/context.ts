@@ -1,4 +1,4 @@
-import { AgentRegistry, SessionRunner, type SessionInfo, type ModelRef, type ToolContext, type PermissionEngine, type Ruleset } from "@zmzai/agent-framework";
+import { AgentRegistry, SessionRunner, createRepoMapTool, type SessionInfo, type ModelRef, type ToolContext, type PermissionEngine, type Ruleset } from "@zmzai/agent-framework";
 import { loadCustomAgents, createFsWorkspaceFiles, createSubprocessSandbox, createMemoryEventLog } from "@zmzai/agent-framework";
 import { productEventLog } from "@/framework/core/events/product-event-log";
 import { createMongoWorkspaceFiles, createWorkspaceAggregateFiles } from "@/framework/core/tools/mongo-workspace";
@@ -88,6 +88,10 @@ function getOrCreateRunner(): SessionRunner {
         await FrameworkSessionModel.updateOne({ sessionId }, { $set: { leaseOwner: null, leaseExpiresAt: null } }).catch(() => undefined);
       },
     },
+    // Repo Map（R1，Aider 式项目地图）：云端模式 workspace 在 Mongo 虚拟 fs +
+    // sandbox 容器内，framework 的本地 fs 版本够不到，留待 sandbox 内嵌方案；
+    // localMode 下 workspace 就是本地目录，直接接入。
+    ...(localMode ? { tools: [createRepoMapTool({ workspaceRoot: () => localWorkspaceRoot })] } : {}),
     sessionRuleTtlMs: 24 * 60 * 60_000,
     // 本机工具（用户桌面 fs/shell/notify）：本地演示模式（无 relay）不启用。
     localTools: localMode ? undefined : resolveLocalTools(),
