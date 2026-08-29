@@ -14,6 +14,7 @@ import { createRunForTask, createTaskForSession, taskForSession } from "@/lib/ta
 import { getWorkspace } from "@/lib/workspaces";
 import { RunModel, type RunRecord } from "@/models/run";
 import { ProjectBudgetExceededError } from "@/lib/project-budget";
+import { runWithTrace } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,11 @@ function outputContract(schema: Record<string, unknown>): string {
 }
 
 export async function POST(request: NextRequest) {
+  // 入口绑定 trace：从 x-trace-id 透传或新生成，出站 relay/sandbox 调用自动携带
+  return runWithTrace(request, () => handleTaskCreate(request));
+}
+
+async function handleTaskCreate(request: NextRequest) {
   const authorized = await requireAgentApiKey(request, "tasks:write");
   if ("response" in authorized) return authorized.response;
   const parsed = createSchema.safeParse(await request.json().catch(() => null));

@@ -34,6 +34,9 @@ const environmentSchema = z.object({
   HINDSIGHT_ENABLED: optionalString,
   // 可见 hindsight UI SSH 隧道指引的白名单（逗号分隔 userId）。
   HINDSIGHT_ADMIN_USER_IDS: optionalString,
+  // 遥测：usage/span 事件推送到 zmzai-billing /api/v1/ingest。未配置时静默跳过（不阻塞主流程）。
+  BILLING_INGEST_URL: optionalString,
+  BILLING_INGEST_KEY: optionalString,
 });
 
 export type ServerEnvironment = z.infer<typeof environmentSchema>;

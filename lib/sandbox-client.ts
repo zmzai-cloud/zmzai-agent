@@ -1,5 +1,6 @@
 import type { SandboxSnapshot, SandboxCommand, SandboxLimits } from "@/lib/sandbox-types";
 import { sandboxAgentContractVersion, sandboxRunResponseSchema } from "@/lib/internal-contracts";
+import { currentTraceId } from "@/lib/telemetry";
 
 export type SandboxRunStatus = "queued" | "planning" | "running" | "waiting_approval" | "cancellation_requested" | "cleanup_pending" | "succeeded" | "failed" | "cancelled";
 
@@ -51,7 +52,8 @@ async function parseError(response: Response): Promise<AgentSandboxError> {
 }
 
 function contractHeaders(secret: string): Record<string, string> {
-  return { authorization: `Bearer ${secret}`, "x-zmzai-contract-version": sandboxAgentContractVersion };
+  // x-trace-id：agent→sandbox 透传链（入口 ALS 绑定，后台任务回退新生成）
+  return { authorization: `Bearer ${secret}`, "x-zmzai-contract-version": sandboxAgentContractVersion, "x-trace-id": currentTraceId() };
 }
 
 export async function createAgentSandboxRun(input: { userId: string; taskRunId: string; requestId: string; snapshot: SandboxSnapshot; command: SandboxCommand; limits?: SandboxLimits }): Promise<SandboxRunView> {

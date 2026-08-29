@@ -19,6 +19,6 @@ export default defineConfig({
     environment: "node",
     css: false,
     // theme 0.3.0 组件带 CSS import——inline 处理让 vite alias（CSS stub）生效
-    server: { deps: { inline: ["@zmzai/theme"] } },
+    server: { deps: { inline: ["@zmzai/theme", "@zmzai/contracts"] } },
   },
 });

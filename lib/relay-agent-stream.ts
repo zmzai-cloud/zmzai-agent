@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 
 import { getServerEnvironment } from "@/config/env";
 import { relayAgentContractVersion } from "@/lib/internal-contracts";
+import { emitUsage, startSpan } from "@/lib/telemetry";
 
 export class RelayAgentError extends Error {
   constructor(public readonly code: string, message: string) {
@@ -186,6 +187,9 @@ function streamFromRelay(model: Model<Api>, context: Context, options: SimpleStr
 
     const reasoningEffort = relayReasoningEffort(options?.reasoning);
 
+    // HTTP 边界埋点：x-trace-id 透传给 relay + relay.call span（绝不影响主流程，end 内部全吞错）
+    const span = startSpan("relay.call");
+
     const fetchTurn = async (): Promise<Response> => {
       let response: Response | null = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -210,7 +214,7 @@ function streamFromRelay(model: Model<Api>, context: Context, options: SimpleStr
         try {
           response = await fetch(`${environment.RELAY_AGENT_URL.replace(/\/$/, "")}/api/internal/agent/chat`, {
             method: "POST",
-            headers: { authorization: `Bearer ${secret}`, "content-type": "application/json", "x-zmzai-contract-version": relayAgentContractVersion },
+            headers: { authorization: `Bearer ${secret}`, "content-type": "application/json", "x-zmzai-contract-version": relayAgentContractVersion, "x-trace-id": span.traceId },
             body: requestBody,
             cache: "no-store",
             signal: options?.signal,
@@ -319,6 +323,8 @@ function streamFromRelay(model: Model<Api>, context: Context, options: SimpleStr
       return { textStarted, reasoningStarted, toolCallCount: toolCalls.size, usage };
     };
 
+    let spanStatus: "ok" | "error" = "error";
+    let spanTokens: number | undefined;
     try {
       const partial = assistant(model, [], "pending");
       stream.push({ type: "start", partial });
@@ -341,16 +347,31 @@ function streamFromRelay(model: Model<Api>, context: Context, options: SimpleStr
       }
       partial.stopReason = turn.toolCallCount > 0 ? "toolUse" : "stop";
       const usage = turn.usage;
+      if (usage) {
+        spanTokens = usage.totalTokens;
+        // product=agent 的用量事件（与 relay 侧 product=relay 事件互补，供成本可见分产品统计）
+        emitUsage({
+          userId: identity.userId,
+          product: "agent",
+          metric: "tokens",
+          amount: usage.totalTokens,
+          traceId: span.traceId,
+          meta: { model: model.id, taskRunId },
+        });
+      }
       partial.usage = usage
         ? { input: usage.input, output: usage.output, cacheRead: usage.cacheRead, cacheWrite: usage.cacheWrite, totalTokens: usage.totalTokens, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }
         : emptyUsage();
       stream.push({ type: "done", reason: partial.stopReason as "stop" | "toolUse", message: partial });
       stream.end(partial);
+      spanStatus = "ok";
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Relay 调用失败";
       const error = assistant(model, [], options?.signal?.aborted ? "aborted" : "error", message);
       stream.push({ type: "error", reason: error.stopReason === "aborted" ? "aborted" : "error", error });
       stream.end(error);
+    } finally {
+      span.end(spanStatus, spanTokens !== undefined ? { tokens: spanTokens } : undefined);
     }
   })();
   return stream;

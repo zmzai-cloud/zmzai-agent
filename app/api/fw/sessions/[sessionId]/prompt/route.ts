@@ -10,6 +10,7 @@ import { RunModel } from "@/models/run";
 import { TaskModel } from "@/models/task";
 import { canRunProject, getProjectAccess } from "@/lib/project-access";
 import { maybeGenerateSessionTitle } from "@/lib/fw-session-title";
+import { runWithTrace } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,11 @@ const promptSchema = z
   .strict();
 
 export async function POST(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
+  // 入口绑定 trace：从 x-trace-id 透传或新生成，出站 relay/sandbox 调用自动携带
+  return runWithTrace(request, () => handlePrompt(request, context));
+}
+
+async function handlePrompt(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
   const user = await getCurrentUser();
   if (!user) return unauthenticated();
   const { sessionId } = await context.params;
