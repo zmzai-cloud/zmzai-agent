@@ -36,8 +36,8 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0(mongoose@9.9.2)
       '@zmzai/theme':
-        specifier: ^0.6.0
-        version: 0.6.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(tailwindcss@4.3.3)
+        specifier: file:../zmzai-theme
+        version: file:../zmzai-theme(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(tailwindcss@4.3.3)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -1557,8 +1557,8 @@ packages:
     peerDependencies:
       mongoose: ^8.24.0
 
-  '@zmzai/theme@0.6.0':
-    resolution: {integrity: sha512-pulqRjClWQaqJWQquGnRkb1pTKW/CgCt5HgbfHzmwQveiQGqFG4yVy6kD0fE7f9MnbwvBiaZtKadbjzI9+KLZA==}
+  '@zmzai/theme@file:../zmzai-theme':
+    resolution: {directory: ../zmzai-theme, type: directory}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
@@ -5181,7 +5181,7 @@ snapshots:
     dependencies:
       mongoose: 9.9.2
 
-  '@zmzai/theme@0.6.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(tailwindcss@4.3.3)':
+  '@zmzai/theme@file:../zmzai-theme(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(tailwindcss@4.3.3)':
     dependencies:
       '@radix-ui/react-dialog': 1.1.23(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@radix-ui/react-dropdown-menu': 2.1.24(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
