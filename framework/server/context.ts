@@ -1,4 +1,4 @@
-import { AgentRegistry, SessionRunner, createRepoMapTool, type SessionInfo, type ModelRef, type ToolContext, type PermissionEngine, type Ruleset } from "@zmzai/agent-framework";
+import { AgentRegistry, createAgentRuntime, type SessionInfo, type ModelRef, type ToolContext, type PermissionEngine, type Ruleset, type SessionRunner } from "@zmzai/agent-framework";
 import { loadCustomAgents, createFsWorkspaceFiles, createSubprocessSandbox, createMemoryEventLog } from "@zmzai/agent-framework";
 import { productEventLog } from "@/framework/core/events/product-event-log";
 import { createMongoWorkspaceFiles, createWorkspaceAggregateFiles } from "@/framework/core/tools/mongo-workspace";
@@ -35,16 +35,17 @@ const localWorkspaceFiles = () => createFsWorkspaceFiles({ root: localWorkspaceR
 function getOrCreateRunner(): SessionRunner {
   if (globalHolder.__zmzaiFrameworkRunner) return globalHolder.__zmzaiFrameworkRunner;
 
-  const runner = new SessionRunner({
+  // 装配收敛（spec D2，Batch 4）：改走 createAgentRuntime(preset)。后端差异
+  // 以 workspace/sandbox 声明，repo_map 能力由工厂接线（localMode 开/云端关），
+  // 产品级字段（agentResolver/memory/lease）经 runnerOptions 透传。
+  const runtime = createAgentRuntime({
     store: defaultStore,
-    registry: new AgentRegistry(),
     eventLog: localMode ? createMemoryEventLog() : productEventLog,
-    streamFnFor: (session) => createRelayStreamFunction({ userId: session.userId, taskRunId: () => activeRunIdForSession(session.id) }),
-    modelFor: (ref: ModelRef) => createRelayModel(ref.modelId),
-    workspaceFor: localMode ? localWorkspaceFiles : (session) => createMongoWorkspaceFiles({ userId: session.userId, workspaceId: session.workspaceId, sessionId: session.id }),
-    sandbox: localMode
-      ? createSubprocessSandbox()
-      : {
+    // relay 双函数装配（旧式）：经 runnerOptions 透传，覆盖 modelProvider 派生
+    workspace: localMode
+      ? { kind: "fs", root: localWorkspaceRoot }
+      : { kind: "custom", workspaceFor: (session: SessionInfo) => createMongoWorkspaceFiles({ userId: session.userId, workspaceId: session.workspaceId, sessionId: session.id }) },
+    sandbox: localMode ? { kind: "subprocess" } : {
       buildSnapshot: async (input) => (await buildExecSnapshot({ userId: input.userId, workspaceId: input.workspaceId, runId: input.runId })).snapshot,
       run: async (input) => {
         const result = await runSandboxCommandAndStream({
@@ -78,7 +79,13 @@ function getOrCreateRunner(): SessionRunner {
         };
       },
     },
-    leaseStore: localMode
+    // Repo Map（R1）：云端模式 workspace 在 Mongo 虚拟 fs + sandbox 容器内，
+    // framework 的本地 fs 索引够不到，显式关闭；localMode 随 fs 工作区接线。
+    capabilities: localMode ? { repoMap: { workspaceRoot: localWorkspaceRoot }, subagents: 1 } : { repoMap: false, subagents: 1 },
+    runnerOptions: {
+      streamFnFor: (session) => createRelayStreamFunction({ userId: session.userId, taskRunId: () => activeRunIdForSession(session.id) }),
+      modelFor: (ref: ModelRef) => createRelayModel(ref.modelId),
+      leaseStore: localMode
       ? undefined
       : {
       stamp: async (sessionId, owner, expiresAt) => {
@@ -88,22 +95,19 @@ function getOrCreateRunner(): SessionRunner {
         await FrameworkSessionModel.updateOne({ sessionId }, { $set: { leaseOwner: null, leaseExpiresAt: null } }).catch(() => undefined);
       },
     },
-    // Repo Map（R1，Aider 式项目地图）：云端模式 workspace 在 Mongo 虚拟 fs +
-    // sandbox 容器内，framework 的本地 fs 版本够不到，留待 sandbox 内嵌方案；
-    // localMode 下 workspace 就是本地目录，直接接入。
-    ...(localMode ? { tools: [createRepoMapTool({ workspaceRoot: () => localWorkspaceRoot })] } : {}),
-    sessionRuleTtlMs: 24 * 60 * 60_000,
-    // 本机工具（用户桌面 fs/shell/notify）：本地演示模式（无 relay）不启用。
-    localTools: localMode ? undefined : resolveLocalTools(),
-    loadWorkspaceAgents: localMode
-      ? async () => (await loadCustomAgents(localWorkspaceFiles())).agents
-      : async (session: SessionInfo) => {
+      sessionRuleTtlMs: 24 * 60 * 60_000,
+      // 本机工具（用户桌面 fs/shell/notify）：本地演示模式（无 relay）不启用；
+      // 注意条件展开而非传 undefined——否则会覆盖工厂注入的能力工具（repo_map）
+      ...(localMode ? {} : { localTools: resolveLocalTools() }),
+      loadWorkspaceAgents: localMode
+        ? async () => (await loadCustomAgents(localWorkspaceFiles())).agents
+        : async (session: SessionInfo) => {
       // .zmzai/agents/*.md 是 workspace 级资产（跨会话共享），走聚合视图而非会话隔离视图
       const workspace = createWorkspaceAggregateFiles(session.workspaceId);
       const { agents } = await loadCustomAgents(workspace);
       return agents;
     },
-    agentResolver: localMode
+      agentResolver: localMode
       ? undefined
       : {
       // Workspace = 智能体：从 workspace 文档读 prompt/steps/permission，
@@ -140,14 +144,15 @@ function getOrCreateRunner(): SessionRunner {
         };
       },
     },
-    subagentDepth: 1,
     compaction: { enabled: true, contextWindow: 128_000, summaryModel: createRelayModel(defaultRelayModel) },
     // 长期记忆（spec §记忆）：recall 注入 + 终态 retain。未配 HINDSIGHT_API_URL
     // 时 provider 是 noop，两个挂点零开销、行为零变化。
     memoryContextFor: (session, text) => recallMemoryContext(session, text),
     hooks: [createMemoryRetainHook()],
+    },
   });
 
+  const runner = runtime.runner;
   globalHolder.__zmzaiFrameworkRunner = runner;
   return runner;
 }
