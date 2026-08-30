@@ -18,7 +18,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agent · zmzai.cloud",
+  title: "Quill · zmzai.cloud",
   description: "Agent 编排与工作流 · zmzai.cloud 子产品",
 };
 
