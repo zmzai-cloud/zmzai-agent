@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, Navbar, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "@zmzai/theme";
+import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, Navbar, PageHeader, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "@zmzai/theme";
 
 type Project = { projectId: string; workspaceId: string; name: string; description: string; instructions: string; updatedAt: string };
 type Task = { taskId: string; title: string; goal: string; status: "draft" | "active" | "succeeded" | "failed" | "cancelled"; updatedAt: string };
@@ -223,17 +223,20 @@ export default function ProjectDetailPage() {
       <Link href="/quill" className="text-xs text-ink-3 transition-colors hover:text-ink">新对话</Link>
     </Navbar>
     <div className="mx-auto w-[min(100%-2rem,74rem)] py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">长期上下文</small>
-          <h1 className="font-serif truncate text-2xl font-semibold tracking-tight text-ink">{project?.name ?? "项目"}</h1>
-          <p className="mt-1 text-sm text-ink-3">{project?.description || "把持续目标、任务和成果放在同一个工作空间里。"}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" size="sm">你的角色：{roleText(role)}</Badge>
-          {canEdit && <Button type="button" variant="secondary" size="sm" onClick={() => setEditing((current) => !current)}><Icon name={editing ? "cross" : "edit"} size={13} />{editing ? "关闭编辑" : "编辑项目"}</Button>}
-        </div>
-      </header>
+      <PageHeader
+        icon="folder"
+        eyebrow="长期上下文"
+        title={project?.name ?? "项目"}
+        titleClassName="truncate"
+        description={project?.description || "把持续目标、任务和成果放在同一个工作空间里。"}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" size="sm">你的角色：{roleText(role)}</Badge>
+            {canEdit && <Button type="button" variant="secondary" size="sm" onClick={() => setEditing((current) => !current)}><Icon name={editing ? "cross" : "edit"} size={13} />{editing ? "关闭编辑" : "编辑项目"}</Button>}
+          </div>
+        }
+        className="mb-6"
+      />
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}
 
       {project && <>

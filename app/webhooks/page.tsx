@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zmzai/theme";
+import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, PageHeader, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zmzai/theme";
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 
 type Workspace = { id: string; name: string };
@@ -122,13 +122,13 @@ export default function WebhooksPage() {
       <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
-          <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">事件推送</small>
-              <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">Webhook</h1>
-              <p className="mt-1 text-sm text-ink-3">任务完成、失败或取消时，自动向你指定的地址推送通知。</p>
-            </div>
-          </header>
+          <PageHeader
+            icon="bolt"
+            eyebrow="事件推送"
+            title="Webhook"
+            description="任务完成、失败或取消时，自动向你指定的地址推送通知。"
+            className="mb-6"
+          />
           {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}<button type="button" className="ml-2 underline" onClick={() => setError(null)}>关闭</button></div>}
 
           {/* Create form */}

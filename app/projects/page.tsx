@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { Badge, Button, Card, EmptyState, Icon, Input, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zmzai/theme";
+import { Badge, Button, Card, EmptyState, Icon, Input, PageHeader, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zmzai/theme";
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 
 type Workspace = { id: string; name: string };
@@ -65,14 +65,16 @@ export default function ProjectsPage() {
     <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
     <div className="flex min-w-0 flex-1 flex-col">
     <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">长期上下文</small>
-          <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">项目</h1>
-          <p className="mt-1 text-sm text-ink-3">把任务、资料和持续目标放在同一个工作空间里。</p>
-        </div>
-        <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
-      </header>
+      <PageHeader
+        icon="folder"
+        eyebrow="长期上下文"
+        title="项目"
+        description="把任务、资料和持续目标放在同一个工作空间里。"
+        actions={
+          <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
+        }
+        className="mb-6"
+      />
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}
 
       <Card padding="md" className="mb-6">

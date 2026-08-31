@@ -26,7 +26,7 @@
     "@zmzai/agent-framework": "0.2.3",
     "@zmzai/contracts": "github:zmzai-cloud/zmzai-contracts#main",
     "@zmzai/db": "^0.1.0",
-    "@zmzai/theme": "0.9.3",
+    "@zmzai/theme": "0.9.6",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "jszip": "3.10.1",

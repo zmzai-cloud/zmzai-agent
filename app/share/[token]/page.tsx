@@ -37,7 +37,10 @@ export default function SharedArtifactPage() {
     <main className="flex min-h-dvh flex-col bg-bg">
       <header className="border-b border-line px-6 py-4">
         <small className="text-xs font-semibold uppercase tracking-wide text-ink-3">ZMZAI 成果分享</small>
-        <h1 className="font-serif mt-1 text-lg font-semibold tracking-tight text-ink">{artifact.title}</h1>
+        <h1 className="mt-1 flex items-start gap-1.5 font-serif text-lg font-semibold tracking-tight text-ink">
+          <Icon name="file-text" size={16} className="mt-1 shrink-0" />
+          <span>{artifact.title}</span>
+        </h1>
         <p className="mt-0.5 font-mono text-xs text-ink-3">{artifact.path} · v{artifact.version} · {formatBytes(artifact.bytes)}</p>
       </header>
       {artifact.previewable

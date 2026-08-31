@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
-import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tabs, Textarea, type BadgeProps } from "@zmzai/theme";
+import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, PageHeader, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tabs, Textarea, type BadgeProps } from "@zmzai/theme";
 
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 import { ArtifactPreviewCard, EditCard, groupAssistantMessages, MessageView, PermissionCard, PptxPreview } from "@/framework/client/parts";
@@ -712,10 +712,15 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {!sessionId && !taskId ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-12">
-          <div className="w-full max-w-2xl text-center">
-            <Badge variant="outline" size="sm" className="mb-3">通用智能体</Badge>
-            <h1 className="font-serif text-4xl font-semibold leading-tight tracking-tight text-ink">把想做的事<span className="text-accent">交给它</span>。</h1>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-3">从一句自然语言开始。Agent 会理解目标、拆解步骤、调用工具，并把可预览、可下载的成果交付给你。</p>
+          <div className="w-full max-w-2xl">
+            <PageHeader
+              variant="hero"
+              centered
+              icon="sparkle"
+              eyebrow="通用智能体"
+              title={<>把想做的事<span className="text-accent">交给它</span>。</>}
+              description="从一句自然语言开始。Agent 会理解目标、拆解步骤、调用工具，并把可预览、可下载的成果交付给你。"
+            />
           </div>
           <form
             className="w-full max-w-3xl rounded-2xl border border-line bg-surface p-4 shadow-sm"

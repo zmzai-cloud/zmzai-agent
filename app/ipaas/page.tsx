@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zmzai/theme";
+import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, PageHeader, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zmzai/theme";
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 
 type Workspace = { id: string; name: string };
@@ -182,16 +182,18 @@ export default function IpaasPage() {
     <main className="flex min-h-dvh flex-col bg-bg md:flex-row">
       <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
       <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="font-serif text-2xl font-semibold tracking-tight">iPaaS 连接器</h1>
-            <p className="mt-1 text-sm text-muted-foreground">管理外部平台集成：飞书、邮件、Webhook</p>
-          </div>
-          <Button size="sm" onClick={() => setShowCreate(true)} disabled={!workspaceId}>
-            <Icon name="plus" className="mr-1.5 h-4 w-4" />
-            新建连接器
-          </Button>
-        </header>
+        <PageHeader
+          icon="external"
+          eyebrow="外部能力"
+          title="iPaaS 连接器"
+          description="管理外部平台集成：飞书、邮件、Webhook"
+          actions={
+            <Button size="sm" onClick={() => setShowCreate(true)} disabled={!workspaceId}>
+              <Icon name="plus" className="mr-1.5 h-4 w-4" />
+              新建连接器
+            </Button>
+          }
+        />
 
         {error && (
           <Card className="border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">

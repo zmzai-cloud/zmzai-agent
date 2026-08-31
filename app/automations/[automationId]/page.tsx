@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { Badge, Button, Card, Icon, Input, Navbar, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "@zmzai/theme";
+import { Badge, Button, Card, Icon, Input, Navbar, PageHeader, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "@zmzai/theme";
 
 type Automation = { automationId: string; workspaceId: string; projectId: string | null; sourceTaskId: string | null; name: string; goal: string; schedule: string; timezone: string; status: "active" | "paused"; lastRunAt: string | null; nextRunAt: string | null; lastRunStatus: string; lastError: string | null };
 
@@ -82,16 +82,24 @@ export default function AutomationEditPage() {
       <Link href="/quill" className="text-xs text-ink-3 transition-colors hover:text-ink">新对话</Link>
     </Navbar>
     <div className="mx-auto w-[min(100%-2rem,74rem)] py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">编辑自动化</small>
-          <h1 className="font-serif truncate text-2xl font-semibold tracking-tight text-ink">{automation?.name ?? "自动化"}</h1>
-          {automation?.lastRunAt && <p className="mt-1 text-sm text-ink-3">上次运行 {new Date(automation.lastRunAt).toLocaleString("zh-CN")}{automation.lastRunStatus ? ` · ${automation.lastRunStatus}` : ""}</p>}
-        </div>
-        <div className="flex items-center gap-2">
-          {automation && <Badge variant={automation.status === "active" ? "success" : "outline"} size="sm">{automation.status === "active" ? "已启用" : "已暂停"}</Badge>}
-        </div>
-      </header>
+      <PageHeader
+        className="mb-6"
+        icon="clock"
+        eyebrow="编辑自动化"
+        title={automation?.name ?? "自动化"}
+        titleClassName="truncate"
+        description={automation?.lastRunAt && (
+          <>
+            上次运行 {new Date(automation.lastRunAt).toLocaleString("zh-CN")}
+            {automation.lastRunStatus ? ` · ${automation.lastRunStatus}` : ""}
+          </>
+        )}
+        actions={
+          <div className="flex items-center gap-2">
+            {automation && <Badge variant={automation.status === "active" ? "success" : "outline"} size="sm">{automation.status === "active" ? "已启用" : "已暂停"}</Badge>}
+          </div>
+        }
+      />
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}
       {saved && <div className="mb-4 rounded-sm border-l-2 border-success bg-success/10 px-3 py-2 text-sm text-ink" role="status">已保存</div>}
 

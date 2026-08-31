@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Icon } from "@zmzai/theme";
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 
 /** FW 会话审计：左列会话清单，右列工具时间线 + 事件流。数据源是
@@ -136,7 +137,10 @@ export function FrameworkAudit() {
           {detail && (
             <>
               <div className="audit-detail-head">
-                <h1>{detail.session.title}</h1>
+                <h1 className="flex items-start gap-1.5 font-serif">
+                  <Icon name="eye" size={14} className="mt-1 shrink-0 text-ink-3" />
+                  <span>{detail.session.title}</span>
+                </h1>
                 <small>
                   {detail.session.agent} · {detail.session.model.modelId}
                 </small>

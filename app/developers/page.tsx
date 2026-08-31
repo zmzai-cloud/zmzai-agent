@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
-import { Badge, Button, Card, CodeBlock, EmptyState, Icon, IconButton, Input, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs } from "@zmzai/theme";
+import { Badge, Button, Card, CodeBlock, EmptyState, Icon, IconButton, Input, PageHeader, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs } from "@zmzai/theme";
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 
 type Workspace = { id: string; name: string };
@@ -614,14 +614,16 @@ export default function DevelopersPage() {
     <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
     <div className="flex min-w-0 flex-1 flex-col">
     <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">集成与 API</small>
-          <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">开发者</h1>
-          <p className="mt-1 text-sm text-ink-3">让内部服务或外部系统安全地创建任务、接收结果。</p>
-        </div>
-        <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
-      </header>
+      <PageHeader
+        icon="file-text"
+        eyebrow="集成与 API"
+        title="开发者"
+        description="让内部服务或外部系统安全地创建任务、接收结果。"
+        actions={
+          <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
+        }
+        className="mb-6"
+      />
       <Tabs items={tabItems} value={tab} onValueChange={(value) => setTab(value as Tab)} className="mb-6" />
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}
 
