@@ -270,7 +270,7 @@ execution detail is expressed as readable progress, plan, and result blocks. */
   .stream-state.reconnecting { border-color: var(--color-accent); color: var(--color-accent-strong); }
   .run-phase.running, .run-phase.queued { color: var(--color-accent-strong); }
   .run-phase.succeeded { color: var(--color-success); }
-  .run-phase.failed { color: #b03a28; }
+  .run-phase.failed { color: var(--color-danger); }
 
   .pane-heading { display: flex; justify-content: space-between; align-items: center; color: var(--color-muted); padding: 0 0.25rem 0.65rem; border-bottom: 1px solid var(--color-line); }
   .pane-heading small { font-size: inherit; color: var(--color-muted); }
@@ -308,13 +308,13 @@ execution detail is expressed as readable progress, plan, and result blocks. */
   .workspace-item-actions { display: flex; gap: 0.1rem; padding-right: 0.3rem; opacity: 0; transition: opacity var(--animate-dur-fast) var(--ease-out); }
   .workspace-item-wrap:hover .workspace-item-actions, .workspace-item-wrap.active .workspace-item-actions { opacity: 1; }
   .workspace-item-actions .icon-command { padding: 0.25rem; }
-  .workspace-item-actions .icon-command.danger:hover { color: #b03a28; }
+  .workspace-item-actions .icon-command.danger:hover { color: var(--color-danger); }
   .workspace-rename { display: flex; gap: 0.3rem; align-items: center; padding: 0.35rem 0.4rem; min-width: 0; }
   .workspace-rename input { min-width: 0; flex: 1; border: 1px solid var(--color-accent); background: var(--color-paper); color: var(--color-ink); padding: 0.3rem 0.4rem; font-size: 0.85rem; }
   .workspace-delete-confirm { grid-column: 1 / -1; display: grid; gap: 0.35rem; padding: 0.5rem 0.6rem; border-top: 1px dashed var(--color-line); font-size: 0.72rem; color: var(--color-muted); }
   .workspace-delete-confirm div { display: flex; gap: 0.5rem; justify-content: flex-end; }
   .workspace-delete-confirm button { border: 1px solid var(--color-line); background: transparent; color: var(--color-ink); padding: 0.25rem 0.55rem; font-family: var(--font-mono); font-size: 0.65rem; cursor: pointer; }
-  .workspace-delete-confirm button:first-child { border-color: #b03a28; color: #b03a28; }
+  .workspace-delete-confirm button:first-child { border-color: var(--color-danger); color: var(--color-danger); }
   .empty-state { padding: 0.75rem 0.5rem; line-height: 1.7; }
   .run-history, .file-tree, .revision-list { margin-top: 1.35rem; }
   .run-history-list { display: grid; gap: 0.2rem; margin-top: 0.45rem; }
@@ -325,7 +325,7 @@ execution detail is expressed as readable progress, plan, and result blocks. */
   .run-history-item small { grid-column: 2; color: var(--color-muted); font-family: var(--font-mono); font-size: 0.5625rem; }
   .run-history-status { padding-top: 0.05rem; color: var(--color-muted); font-family: var(--font-mono); font-size: 0.5625rem; white-space: nowrap; }
   .run-history-status.succeeded { color: var(--color-success); }
-  .run-history-status.failed, .run-history-status.cancelled { color: #b03a28; }
+  .run-history-status.failed, .run-history-status.cancelled { color: var(--color-danger); }
   .run-history-status.running, .run-history-status.queued, .run-history-status.waiting_approval { color: var(--color-accent-strong); }
   .file-item { display: block; width: 100%; padding: 0.4rem 0.5rem; border: 0; background: transparent; text-align: left; color: var(--color-muted); font-family: var(--font-mono); font-size: 0.71875rem; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-item:hover, .file-item.active { color: var(--color-accent); background: var(--color-paper); }
@@ -455,14 +455,14 @@ execution detail is expressed as readable progress, plan, and result blocks. */
   .audit-detail-empty p { color: var(--color-muted); font-size: 0.875rem; }
   .audit-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--color-line); }
   .audit-detail-head h1 { max-width: 40rem; margin: 0.25rem 0 0; font-size: 1rem; line-height: 1.45; overflow-wrap: anywhere; }
-  .audit-failure { margin: 0.85rem 0; padding: 0.6rem 0.75rem; border: 1px solid #b03a28; color: #b03a28; font-size: 0.8125rem; }
+  .audit-failure { margin: 0.85rem 0; padding: 0.6rem 0.75rem; border: 1px solid var(--color-danger); color: var(--color-danger); font-size: 0.8125rem; }
   .audit-detail-section { margin-top: 1.5rem; }
 
   .audit-tool-timeline { display: grid; gap: 0.45rem; margin: 0.6rem 0 0; padding: 0; list-style: none; }
   .audit-tool-node { border: 1px solid var(--color-line); border-radius: var(--radius); background: color-mix(in oklab, var(--color-surface) 93%, var(--color-bg)); }
   .audit-tool-node.running { border-left: 3px solid var(--color-ink); }
   .audit-tool-node.completed { border-left: 3px solid var(--color-success); }
-  .audit-tool-node.failed { border-left: 3px solid #b03a28; }
+  .audit-tool-node.failed { border-left: 3px solid var(--color-danger); }
   .audit-tool-node-head { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--color-line); }
   .audit-tool-node-head + .audit-tool-body { border-top: 0; }
   .audit-event-toggle { display: flex; align-items: baseline; gap: 0.6rem; width: 100%; padding: 0.5rem 0.65rem; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
@@ -479,7 +479,7 @@ execution detail is expressed as readable progress, plan, and result blocks. */
   .audit-tool-args { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-muted); font-family: var(--font-mono); font-size: 0.6875rem; }
   .audit-tool-state, .audit-tool-duration { flex: 0 0 auto; color: var(--color-muted); font-family: var(--font-mono); font-size: 0.625rem; white-space: nowrap; }
   .audit-tool-node.completed .audit-tool-state { color: var(--color-success); }
-  .audit-tool-node.failed .audit-tool-state { color: #b03a28; }
+  .audit-tool-node.failed .audit-tool-state { color: var(--color-danger); }
   .audit-tool-body { margin: 0; padding: 0.55rem 0.65rem; color: var(--color-muted); font-size: 0.75rem; overflow-wrap: anywhere; }
   .audit-tool-body pre { max-height: 22rem; overflow: auto; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 0.656rem; line-height: 1.6; white-space: pre; }
   .audit-tool-truncated { margin: 0; padding: 0 0.65rem 0.5rem; color: var(--color-muted); font-family: var(--font-mono); font-size: 0.625rem; }
