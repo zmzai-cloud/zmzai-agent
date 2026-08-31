@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
-import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, MovingBorder, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tabs, Textarea, type BadgeProps } from "@zmzai/theme";
+import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tabs, Textarea, type BadgeProps } from "@zmzai/theme";
 
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 import { ArtifactPreviewCard, EditCard, groupAssistantMessages, MessageView, PermissionCard, PptxPreview } from "@/framework/client/parts";
@@ -717,23 +717,44 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
             <h1 className="text-4xl font-semibold leading-tight tracking-tight text-ink">把想做的事<span className="text-accent">交给它</span>。</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-3">从一句自然语言开始。Agent 会理解目标、拆解步骤、调用工具，并把可预览、可下载的成果交付给你。</p>
           </div>
-          <MovingBorder className="w-full max-w-3xl" duration={6} borderColor="var(--color-accent)" backgroundColor="var(--color-bg)" borderRadius="var(--radius-xl)">
-            <form className="w-full rounded-xl bg-bg p-6 shadow-sm" onSubmit={(event: FormEvent) => { event.preventDefault(); void send(); }}>
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Button type="button" variant={researchMode ? "primary" : "secondary"} size="sm" onClick={() => setResearchMode((current) => !current)}><Icon name="search" size={13} />{researchMode ? "广泛研究模式" : "普通任务模式"}</Button>
-                {researchMode && <span className="text-xs text-ink-3">将并行核验多个研究视角</span>}
-              </div>
-              <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={handleKeyDown} placeholder={researchMode ? "例如：比较 AI Agent 平台的产品能力和商业模式" : "例如：读取 sales.csv，生成一个可预览的销售数据看板"} rows={5} className="w-full resize-none px-5 py-4 text-base leading-relaxed" />
-              <FileAttachments files={selectedFiles} onRemove={(index) => setSelectedFiles((current) => current.filter((_, item) => item !== index))} />
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <FilePicker onFiles={(files) => setSelectedFiles((current) => [...current, ...files].slice(0, 10))} />
-                  <span className="truncate text-xs text-ink-3">{selectedWorkspace ? `将使用 ${selectedWorkspace.name}` : workspaceLoading ? "正在准备工作区" : "无法加载工作区"}</span>
-                </div>
-                <Button type="submit" disabled={!prompt.trim() || sending || uploading || !selectedWorkspace}><Icon name="arrow-up" size={14} />{sending || uploading ? "准备中" : "开始任务"}</Button>
-              </div>
-            </form>
-          </MovingBorder>
+          <form
+            className="w-full max-w-3xl rounded-2xl border border-line bg-surface p-4 shadow-sm"
+            onSubmit={(event: FormEvent) => { event.preventDefault(); void send(); }}
+          >
+            <Textarea
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={researchMode ? "例如：比较 AI Agent 平台的产品能力和商业模式" : "例如：读取 sales.csv，生成一个可预览的销售数据看板"}
+              rows={4}
+              className="w-full resize-none border-0 bg-transparent px-1 py-1 text-[15px] leading-relaxed"
+            />
+            <FileAttachments files={selectedFiles} onRemove={(index) => setSelectedFiles((current) => current.filter((_, item) => item !== index))} />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <FilePicker onFiles={(files) => setSelectedFiles((current) => [...current, ...files].slice(0, 10))} />
+              <button
+                type="button"
+                onClick={() => setResearchMode((current) => !current)}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-2 transition-colors hover:bg-surface-2"
+              >
+                <Icon name="search" size={12} />
+                {researchMode ? "广泛研究模式" : "普通任务模式"}
+              </button>
+              {researchMode && <span className="hidden text-xs text-ink-3 sm:inline">将并行核验多个研究视角</span>}
+              <span className="ml-auto hidden min-w-0 truncate text-xs text-ink-3 sm:inline">
+                {selectedWorkspace ? selectedWorkspace.name : workspaceLoading ? "正在准备工作区" : "无法加载工作区"}
+              </span>
+              <button
+                type="submit"
+                disabled={!prompt.trim() || sending || uploading || !selectedWorkspace}
+                aria-label={sending || uploading ? "准备中" : "开始任务"}
+                title={sending || uploading ? "准备中" : "开始任务（⌘/⌃ + Enter）"}
+                className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity hover:opacity-85 disabled:opacity-35"
+              >
+                <Icon name="arrow-up" size={16} />
+              </button>
+            </div>
+          </form>
           <div className="grid w-full max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4">
             {([
               { icon: "activity", title: "生成数据看板", prompt: "读取 sales.csv，生成一个可预览的销售数据看板，并检查桌面和移动端布局", research: false },
