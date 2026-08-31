@@ -245,7 +245,7 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
     <main className="workbench fw-workbench">
       <Navbar
         sublabel="agent"
-        badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">a.zmzai.cloud</span>}
+        badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">agent.zmzai.cloud</span>}
         actions={
           <>
             {user && (

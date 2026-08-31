@@ -218,7 +218,7 @@ export default function ProjectDetailPage() {
 
   if (!project && !error) return <main className="grid min-h-dvh place-items-center bg-bg"><p className="text-sm text-ink-3">正在打开项目…</p></main>;
   return <main className="min-h-dvh bg-bg">
-    <Navbar sublabel="Quill" badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">a.zmzai.cloud</span>}>
+    <Navbar sublabel="Quill" badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">agent.zmzai.cloud</span>}>
       <Link href="/projects" className="text-xs text-ink-3 transition-colors hover:text-ink"><Icon name="arrow-left" size={12} className="mr-1 inline" />返回项目</Link>
       <Link href="/quill" className="text-xs text-ink-3 transition-colors hover:text-ink">新对话</Link>
     </Navbar>

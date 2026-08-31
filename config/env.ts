@@ -18,13 +18,13 @@ const environmentSchema = z.object({
   AUTH_SECRET: z.string().min(32),
   SESSION_COOKIE_NAME: z.string().regex(/^[a-zA-Z0-9_-]+$/).default("muzhi_session"),
   SESSION_COOKIE_DOMAIN: optionalString,
-  RELAY_AGENT_URL: z.string().url().default("https://m.zmzai.cloud"),
+  RELAY_AGENT_URL: z.string().url().default("https://relay.zmzai.cloud"),
   RELAY_AGENT_SERVICE_SECRET_CURRENT: optionalString,
   RELAY_AGENT_SERVICE_SECRET_PREVIOUS: optionalString,
-  SANDBOX_AGENT_URL: z.string().url().default("https://z.zmzai.cloud"),
+  SANDBOX_AGENT_URL: z.string().url().default("https://sandbox.zmzai.cloud"),
   SANDBOX_AGENT_SERVICE_SECRET_CURRENT: optionalString,
   AUTOMATION_SCHEDULER_SECRET: optionalString,
-  // workos（i.zmzai.cloud）服务间拉取任务/智能体摘要用的密钥，双侧同名。
+  // workos（workos.zmzai.cloud）服务间拉取任务/智能体摘要用的密钥，双侧同名。
   WORKOS_SERVICE_SECRET_CURRENT: serviceSecret,
   WORKOS_SERVICE_SECRET_PREVIOUS: serviceSecret,
   GITHUB_OAUTH_CLIENT_ID: optionalString,

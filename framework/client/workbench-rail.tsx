@@ -151,7 +151,7 @@ export function WorkbenchRail({ tasks, activeTaskId, onNew, onOpen }: { tasks: R
               <DropdownMenuLabel className="font-mono text-[11px] text-ink-3">{user.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => window.open("https://zmzai.cloud", "_blank", "noreferrer")}><Icon name="home" size={13} />主站 zmzai.cloud</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => window.open("https://m.zmzai.cloud", "_blank", "noreferrer")}><Icon name="message" size={13} />模型服务 m.zmzai.cloud</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => window.open("https://relay.zmzai.cloud", "_blank", "noreferrer")}><Icon name="message" size={13} />模型服务 relay.zmzai.cloud</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => window.open("https://muzhi.zmzai.cloud", "_blank", "noreferrer")}><Icon name="book" size={13} />课程站 muzhi</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => router.push("/audit")}><Icon name="activity" size={13} />运行记录</DropdownMenuItem>

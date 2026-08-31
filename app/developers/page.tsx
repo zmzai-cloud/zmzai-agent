@@ -483,7 +483,7 @@ def verify_signature(secret, timestamp, webhook_id, body, signature) -> bool:
 export default function DevelopersPage() {
   const [tab, setTab] = useState<Tab>("quickstart");
   // base URL 在客户端取当前 origin，SSR 时回退到生产域名（useSyncExternalStore 避免 hydration 差异）。
-  const baseUrl = useSyncExternalStore(subscribeNever, () => window.location.origin, () => "https://a.zmzai.cloud");
+  const baseUrl = useSyncExternalStore(subscribeNever, () => window.location.origin, () => "https://agent.zmzai.cloud");
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);

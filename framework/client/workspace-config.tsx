@@ -224,7 +224,7 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
     <main className="agent-workbench">
       <Navbar
         sublabel="agent"
-        badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">a.zmzai.cloud</span>}
+        badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">agent.zmzai.cloud</span>}
         actions={<span className="flex items-center gap-2 text-sm text-ink-2"><span className="status-dot" />智能体配置</span>}
       >
         <Link href="/quill" className={navItemClass(pathname === "/quill")}>任务</Link>

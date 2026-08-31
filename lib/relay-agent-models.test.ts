@@ -19,12 +19,12 @@ const modelData = {
 
 describe("listRelayAgentModels", () => {
   it("returns modelSelectorData on success", async () => {
-    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "secret", RELAY_AGENT_URL: "https://m.zmzai.cloud" });
+    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "secret", RELAY_AGENT_URL: "https://relay.zmzai.cloud" });
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ modelSelectorData: modelData }) });
     const result = await listRelayAgentModels("user_1");
     expect(result).toEqual(modelData);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://m.zmzai.cloud/api/internal/agent/models",
+      "https://relay.zmzai.cloud/api/internal/agent/models",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({ authorization: "Bearer secret" }),
@@ -34,37 +34,37 @@ describe("listRelayAgentModels", () => {
   });
 
   it("strips trailing slash from RELAY_AGENT_URL", async () => {
-    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://m.zmzai.cloud/" });
+    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://relay.zmzai.cloud/" });
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ modelSelectorData: modelData }) });
     await listRelayAgentModels("u");
-    expect(fetchMock).toHaveBeenCalledWith("https://m.zmzai.cloud/api/internal/agent/models", expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith("https://relay.zmzai.cloud/api/internal/agent/models", expect.anything());
   });
 
   it("throws when secret is not configured", async () => {
-    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: undefined, RELAY_AGENT_URL: "https://m.zmzai.cloud" });
+    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: undefined, RELAY_AGENT_URL: "https://relay.zmzai.cloud" });
     await expect(listRelayAgentModels("u")).rejects.toThrow("RELAY_AGENT_SERVICE_SECRET_CURRENT");
   });
 
   it("throws with error string from response body", async () => {
-    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://m.zmzai.cloud" });
+    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://relay.zmzai.cloud" });
     fetchMock.mockResolvedValue({ ok: false, json: async () => ({ error: "Access denied for this user" }) });
     await expect(listRelayAgentModels("u")).rejects.toThrow("Access denied for this user");
   });
 
   it("throws default message when body has no error string", async () => {
-    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://m.zmzai.cloud" });
+    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://relay.zmzai.cloud" });
     fetchMock.mockResolvedValue({ ok: false, json: async () => ({}) });
     await expect(listRelayAgentModels("u")).rejects.toThrow("无法读取可用模型目录");
   });
 
   it("throws when modelSelectorData is missing from OK response", async () => {
-    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://m.zmzai.cloud" });
+    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://relay.zmzai.cloud" });
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
     await expect(listRelayAgentModels("u")).rejects.toThrow("无法读取可用模型目录");
   });
 
   it("handles non-JSON response body gracefully", async () => {
-    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://m.zmzai.cloud" });
+    getServerEnvironment.mockReturnValue({ RELAY_AGENT_SERVICE_SECRET_CURRENT: "s", RELAY_AGENT_URL: "https://relay.zmzai.cloud" });
     fetchMock.mockResolvedValue({ ok: false, json: async () => null });
     await expect(listRelayAgentModels("u")).rejects.toThrow("无法读取可用模型目录");
   });

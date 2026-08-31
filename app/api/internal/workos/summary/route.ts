@@ -27,7 +27,7 @@ function parseLimit(raw: string | null): number | "invalid" | undefined {
   return Math.min(value, 20);
 }
 
-/** workos（i.zmzai.cloud）服务间拉取：某用户的最近任务 + 智能体（含知识库计数）摘要。 */
+/** workos（workos.zmzai.cloud）服务间拉取：某用户的最近任务 + 智能体（含知识库计数）摘要。 */
 export async function GET(request: NextRequest) {
   const environment = getServerEnvironment();
   const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? request.headers.get("x-workos-service-secret");
