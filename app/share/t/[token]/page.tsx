@@ -65,7 +65,7 @@ export default function SharedTaskPage() {
           <small className="text-xs font-semibold uppercase tracking-wide text-ink-3">ZMZAI 会话分享</small>
           <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[10px] text-ink-3">{statusLabel(task.status)}</span>
         </div>
-        <h1 className="mt-1 text-lg font-semibold tracking-tight text-ink">{task.title || "未命名任务"}</h1>
+        <h1 className="font-serif mt-1 text-lg font-semibold tracking-tight text-ink">{task.title || "未命名任务"}</h1>
         <p className="mt-0.5 font-mono text-xs text-ink-3">{new Date(task.createdAt).toLocaleString("zh-CN")}</p>
       </header>
 

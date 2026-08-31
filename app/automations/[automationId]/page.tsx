@@ -85,7 +85,7 @@ export default function AutomationEditPage() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">编辑自动化</small>
-          <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">{automation?.name ?? "自动化"}</h1>
+          <h1 className="font-serif truncate text-2xl font-semibold tracking-tight text-ink">{automation?.name ?? "自动化"}</h1>
           {automation?.lastRunAt && <p className="mt-1 text-sm text-ink-3">上次运行 {new Date(automation.lastRunAt).toLocaleString("zh-CN")}{automation.lastRunStatus ? ` · ${automation.lastRunStatus}` : ""}</p>}
         </div>
         <div className="flex items-center gap-2">

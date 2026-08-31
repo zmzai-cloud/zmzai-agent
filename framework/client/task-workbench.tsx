@@ -714,7 +714,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
         <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-12">
           <div className="w-full max-w-2xl text-center">
             <Badge variant="outline" size="sm" className="mb-3">通用智能体</Badge>
-            <h1 className="text-4xl font-semibold leading-tight tracking-tight text-ink">把想做的事<span className="text-accent">交给它</span>。</h1>
+            <h1 className="font-serif text-4xl font-semibold leading-tight tracking-tight text-ink">把想做的事<span className="text-accent">交给它</span>。</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-3">从一句自然语言开始。Agent 会理解目标、拆解步骤、调用工具，并把可预览、可下载的成果交付给你。</p>
           </div>
           <form
@@ -784,7 +784,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
           <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3">
             <div className="min-w-0">
               <Link href="/fw" className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-ink-3 hover:text-ink"><Icon name="chevron-left" size={12} />{selectedWorkspace?.name ?? "返回工作台"}</Link>
-              <h1 className="truncate text-lg font-semibold tracking-tight">{task?.title ?? snapshot?.session.title ?? "开始一个新任务"}</h1>
+              <h1 className="font-serif truncate text-lg font-semibold tracking-tight">{task?.title ?? snapshot?.session.title ?? "开始一个新任务"}</h1>
             </div>
             <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
               {task && canEditTask && (

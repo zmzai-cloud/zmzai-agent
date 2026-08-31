@@ -237,7 +237,7 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
       <div className="agent-config-grid">
         <section className="agent-config-editor">
           <div className="agent-config-titlebar">
-            <div><span className="eyebrow">智能体配置</span><h1>{detail.name}</h1></div>
+            <div><span className="eyebrow">智能体配置</span><h1 className="font-serif">{detail.name}</h1></div>
             <div className="agent-config-actions">
               {savedAt && <span className="agent-saved-hint">已保存 {savedAt}</span>}
               <button type="button" className="command-button quiet" onClick={() => void save()} disabled={saving}>{saving ? "保存中" : "保存配置"}</button>

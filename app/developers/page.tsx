@@ -617,7 +617,7 @@ export default function DevelopersPage() {
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">集成与 API</small>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">开发者</h1>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">开发者</h1>
           <p className="mt-1 text-sm text-ink-3">让内部服务或外部系统安全地创建任务、接收结果。</p>
         </div>
         <Link href="/fw"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>

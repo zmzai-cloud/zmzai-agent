@@ -226,7 +226,7 @@ export default function ProjectDetailPage() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">长期上下文</small>
-          <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">{project?.name ?? "项目"}</h1>
+          <h1 className="font-serif truncate text-2xl font-semibold tracking-tight text-ink">{project?.name ?? "项目"}</h1>
           <p className="mt-1 text-sm text-ink-3">{project?.description || "把持续目标、任务和成果放在同一个工作空间里。"}</p>
         </div>
         <div className="flex items-center gap-2">

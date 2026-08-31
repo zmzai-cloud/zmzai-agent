@@ -283,7 +283,7 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
       {!snapshot && !loading && (
         <div className="fw-home">
           <div className="fw-home-hero">
-            <h1 className="text-3xl font-semibold tracking-tight">今天想做些什么？</h1>
+            <h1 className="font-serif text-3xl font-semibold tracking-tight">今天想做些什么？</h1>
             <div className="flex flex-wrap justify-center gap-2" aria-label="快捷任务">
               {[
                 { label: "分析文件", prompt: "分析我上传的文件，提取关键信息、风险和下一步建议，并生成可下载摘要。" },
@@ -390,7 +390,7 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
           <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3">
             <div className="flex min-w-0 items-center gap-2">
               <div className="min-w-0">
-                <h1 className="truncate text-lg font-semibold tracking-tight">{snapshot?.session.title ?? "新任务"}</h1>
+                <h1 className="font-serif truncate text-lg font-semibold tracking-tight">{snapshot?.session.title ?? "新任务"}</h1>
               </div>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">

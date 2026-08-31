@@ -68,7 +68,7 @@ export default function ProjectsPage() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <small className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">长期上下文</small>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">项目</h1>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">项目</h1>
           <p className="mt-1 text-sm text-ink-3">把任务、资料和持续目标放在同一个工作空间里。</p>
         </div>
         <Link href="/fw"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>

@@ -118,7 +118,7 @@ export function ResearchWorkbench({ researchJobId }: { researchJobId: string | n
               <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3">
                 <div className="min-w-0">
                   <small className="block text-xs font-semibold uppercase tracking-wide text-ink-3">多视角执行</small>
-                  <h1 className="text-lg font-semibold tracking-tight">广泛研究</h1>
+                  <h1 className="font-serif text-lg font-semibold tracking-tight">广泛研究</h1>
                 </div>
                 <Badge variant="outline" size="sm">{items.length} 项</Badge>
               </div>

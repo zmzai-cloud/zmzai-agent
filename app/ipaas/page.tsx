@@ -184,7 +184,7 @@ export default function IpaasPage() {
       <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">iPaaS 连接器</h1>
+            <h1 className="font-serif text-2xl font-semibold tracking-tight">iPaaS 连接器</h1>
             <p className="mt-1 text-sm text-muted-foreground">管理外部平台集成：飞书、邮件、Webhook</p>
           </div>
           <Button size="sm" onClick={() => setShowCreate(true)} disabled={!workspaceId}>

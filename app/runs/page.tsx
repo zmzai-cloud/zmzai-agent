@@ -116,7 +116,7 @@ export default function RunsPage() {
 
       <div className="flex flex-1 flex-col overflow-y-auto">
         <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line bg-bg/85 px-5 py-3 backdrop-blur-md">
-          <h1 className="text-sm font-semibold text-ink">运行历史</h1>
+          <h1 className="font-serif text-sm font-semibold text-ink">运行历史</h1>
           <Badge variant="outline" size="sm">{total} 条记录</Badge>
           <span className="flex-1" />
           {workspaces.length > 0 && (
