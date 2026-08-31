@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** 退出登录：清除本域（.zmzai.cloud）的 session cookie。auth 侧的会话文档
- *  由 TTL 过期清理。前端调完跳 /fw 即可。 */
+ *  由 TTL 过期清理。前端调完跳 /quill 即可。 */
 export async function POST() {
   const environment = getServerEnvironment();
   const name = environment.SESSION_COOKIE_NAME;

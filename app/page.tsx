@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-/** 默认入口切换到 FW 协议工作台（spec §10.2 step 2：新协议成为默认）。
- *  旧 plan/build 工作台保留在 /legacy 供历史会话回放，M3 收尾时下线。 */
+/** 默认入口为 Quill 工作台（/quill）。
+ *  旧路径 /fw 由 middleware 301 跳转过来，旧链接与书签继续可用。 */
 export default function HomePage() {
-  redirect("/fw");
+  redirect("/quill");
 }

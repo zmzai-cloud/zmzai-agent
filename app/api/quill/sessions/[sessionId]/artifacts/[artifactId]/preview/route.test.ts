@@ -17,7 +17,7 @@ vi.mock("@/lib/project-access", () => ({ getSessionProjectAccess: mocks.sessionP
 vi.mock("@/lib/artifact-access", () => ({ findArtifactForSession: mocks.findArtifactForSession }));
 vi.mock("@/lib/artifact-storage", () => ({ openArtifactStream: mocks.openArtifactStream }));
 
-import { GET } from "@/app/api/fw/sessions/[sessionId]/artifacts/[artifactId]/preview/route";
+import { GET } from "@/app/api/quill/sessions/[sessionId]/artifacts/[artifactId]/preview/route";
 
 const ctx = (sessionId: string, artifactId: string) => ({ params: Promise.resolve({ sessionId, artifactId }) });
 const ownerSession = { sessionId: "session_1", userId: "user_owner" };

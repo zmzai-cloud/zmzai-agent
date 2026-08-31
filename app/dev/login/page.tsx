@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LocalDevLoginPage() {
   if (!isLocalDevLoginEnabled()) notFound();
-  if (await getCurrentUser()) redirect("/fw");
+  if (await getCurrentUser()) redirect("/quill");
 
   return (
     <main className="dev-login-shell">

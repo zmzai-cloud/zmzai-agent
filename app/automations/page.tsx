@@ -30,7 +30,7 @@ export default function AutomationsPage() {
   const load = async () => { const [ws, automations] = await fetchPage(); setWorkspaces(ws.workspaces); setWorkspaceId((current) => current || ws.workspaces[0]?.id || ""); setItems(automations.automations); };
   useEffect(() => { let cancelled = false; void fetchPage().then(([ws, automations]) => { if (cancelled) return; setWorkspaces(ws.workspaces); setWorkspaceId((current) => current || ws.workspaces[0]?.id || ""); setItems(automations.automations); }).catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "无法加载自动化"); }); return () => { cancelled = true; }; }, []);
   const create = async () => { if (!name.trim() || !goal.trim() || !workspaceId) return; setBusy("create"); try { await json("/api/automations", { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify({ workspaceId, name, goal, schedule, timezone: "Asia/Shanghai" }) }); setName(""); setGoal(""); setSchedule("手动运行"); await load(); } catch (cause) { setError(cause instanceof Error ? cause.message : "创建失败"); } finally { setBusy(null); } };
-  const run = async (id: string) => { setBusy(id); try { const result = await json<{ session: { id: string } }>(`/api/automations/${id}/run`, { method: "POST", headers: { "idempotency-key": crypto.randomUUID() } }); router.push(`/fw/s/${result.session.id}`); } catch (cause) { setError(cause instanceof Error ? cause.message : "启动失败"); setBusy(null); } };
+  const run = async (id: string) => { setBusy(id); try { const result = await json<{ session: { id: string } }>(`/api/automations/${id}/run`, { method: "POST", headers: { "idempotency-key": crypto.randomUUID() } }); router.push(`/quill/s/${result.session.id}`); } catch (cause) { setError(cause instanceof Error ? cause.message : "启动失败"); setBusy(null); } };
   const toggle = async (item: Automation) => { setBusy(item.automationId); try { await json(`/api/automations/${item.automationId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: item.status === "active" ? "paused" : "active" }) }); await load(); } catch (cause) { setError(cause instanceof Error ? cause.message : "更新失败"); } finally { setBusy(null); } };
   const loadHistory = async (automationId: string) => { if (histories[automationId]) return; try { const result = await json<{ executions: AutomationExecution[] }>(`/api/automations/${automationId}/executions`); setHistories((current) => ({ ...current, [automationId]: result.executions })); } catch (cause) { setError(cause instanceof Error ? cause.message : "无法加载运行记录"); } };
   const generateSecret = async (item: Automation) => { setBusy(`secret:${item.automationId}`); setError(null); try { const result = await json<{ url: string; secret: string; prefix: string }>(`/api/automations/${item.automationId}/webhook-secret`, { method: "POST" }); setSecrets((current) => ({ ...current, [item.automationId]: { secret: result.secret, prefix: result.prefix, webhookUrl: result.url, emailUrl: result.url.replace(/\/webhook$/, "/email") } })); setOpenTrigger(item.automationId); } catch (cause) { setError(cause instanceof Error ? cause.message : "无法生成接入密钥"); } finally { setBusy(null); } };
@@ -42,7 +42,7 @@ export default function AutomationsPage() {
   if (!loading && !loggedIn) return <LoginGate title="登录后管理自动化" />;
 
   return <main className="flex min-h-dvh flex-col bg-bg md:flex-row">
-    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
     <div className="flex min-w-0 flex-1 flex-col">
     <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -51,7 +51,7 @@ export default function AutomationsPage() {
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">自动化</h1>
           <p className="mt-1 text-sm text-ink-3">把成功的任务保存成可手动或定时运行的模板。</p>
         </div>
-        <Link href="/fw"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
+        <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
       </header>
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}
 
@@ -87,7 +87,7 @@ export default function AutomationsPage() {
                   <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">运行记录</summary>
                   <div className="mt-2 flex flex-col gap-1">
                     {histories[item.automationId]?.map((execution) => (
-                      <Link href={`/fw/t/${execution.taskId}`} key={execution.executionId} className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-ink-2 hover:bg-surface">
+                      <Link href={`/quill/t/${execution.taskId}`} key={execution.executionId} className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-ink-2 hover:bg-surface">
                         <Badge variant={executionVariant(execution.status)} size="sm">{execution.status === "succeeded" ? "成功" : execution.status === "failed" ? "失败" : execution.status}</Badge>
                         <span>{execution.source === "schedule" ? "定时" : "手动"} · {new Date(execution.createdAt).toLocaleString("zh-CN")}{execution.error ? ` · ${execution.error}` : ""}</span>
                       </Link>

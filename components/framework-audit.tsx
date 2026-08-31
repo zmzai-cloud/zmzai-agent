@@ -104,7 +104,7 @@ export function FrameworkAudit() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-bg md:flex-row audit-page">
-      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
       {error && <div className="workbench-alert">{error}</div>}
 
       <div className="audit-grid">

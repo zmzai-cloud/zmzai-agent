@@ -13,13 +13,13 @@ vi.mock("@/framework/server/context", () => ({
   getFrameworkRegistry: mocks.getFrameworkRegistry,
 }));
 
-import { GET } from "@/app/api/fw/agents/route";
+import { GET } from "@/app/api/quill/agents/route";
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("GET /api/fw/agents", () => {
+describe("GET /api/quill/agents", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
     const res = await GET();

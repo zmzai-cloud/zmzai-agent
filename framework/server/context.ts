@@ -65,7 +65,7 @@ function getOrCreateRunner(): SessionRunner {
           ...(result.errorMessage ? { errorMessage: result.errorMessage } : {}),
           artifacts: result.artifacts.map((artifact) => {
             const previewable = /^(text\/html|image\/(png|jpeg|gif|svg\+xml|webp)|application\/pdf|text\/(plain|markdown|css)|application\/vnd\.openxmlformats-officedocument\.presentationml\.presentation)/.test(artifact.contentType.toLowerCase());
-            const base = artifact.artifactId ? `/api/fw/sessions/${input.runId}/artifacts/${artifact.artifactId}` : null;
+            const base = artifact.artifactId ? `/api/quill/sessions/${input.runId}/artifacts/${artifact.artifactId}` : null;
             return {
               ...(artifact.artifactId ? { artifactId: artifact.artifactId } : {}),
               path: artifact.path,

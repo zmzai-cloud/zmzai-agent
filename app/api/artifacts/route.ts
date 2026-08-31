@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     const run = runById.get(record.runId);
     const task = run ? taskById.get(run.taskId) : undefined;
     const contentType = record.contentType.split(";")[0]!.trim().toLowerCase();
-    const base = run ? `/api/fw/sessions/${encodeURIComponent(run.sessionId)}/artifacts/${encodeURIComponent(record.artifactId)}` : null;
+    const base = run ? `/api/quill/sessions/${encodeURIComponent(run.sessionId)}/artifacts/${encodeURIComponent(record.artifactId)}` : null;
     return { artifactId: record.artifactId, title: record.title || record.sandboxPath.split("/").pop() || record.sandboxPath, path: record.sandboxPath, tags: record.tags ?? [], versionGroupId: record.versionGroupId ?? null, version: record.version ?? 1, qualityStatus: record.qualityStatus ?? "not_applicable", qualityResult: record.qualityResult ?? null, shared: Boolean(record.shareExpiresAt && record.shareExpiresAt > new Date()), shareExpiresAt: record.shareExpiresAt?.toISOString() ?? null, bytes: record.sizeBytes, contentType: record.contentType, createdAt: record.createdAt.toISOString(), taskId: task?.taskId ?? null, taskTitle: task?.title ?? null, projectId: task?.projectId ?? null, projectIds: [...new Set([...(task?.projectId ? [task.projectId] : []), ...(referencesByArtifact.get(record.artifactId) ?? [])])], downloadUrl: base ? `${base}/download` : null, previewUrl: base && previewableTypes.has(contentType) ? `${base}/preview` : null };
   }).filter((artifact) => !projectId || artifact.projectIds.includes(projectId)).filter((artifact) => !taskId || artifact.taskId === taskId) }, { headers: { "cache-control": "no-store" } });
 }

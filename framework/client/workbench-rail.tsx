@@ -14,7 +14,7 @@ export function useLoggedIn() {
   const [loggedIn, setLoggedIn] = useState(true);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    void fetch("/api/fw/me", { cache: "no-store" })
+    void fetch("/api/quill/me", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) { setLoggedIn(false); setUser(null); return null; }
         return response.json() as Promise<{ user: { name: string; email: string } }>;
@@ -60,8 +60,8 @@ function railDotClass(status: string) {
 }
 
 const NAV_LINKS = [
-  { href: "/fw", label: "新任务", icon: "message", match: (path: string) => path === "/fw" || path.startsWith("/fw/s") || path.startsWith("/fw/t") },
-  { href: "/fw/research", label: "广泛研究", icon: "search", match: (path: string) => path.startsWith("/fw/research") },
+  { href: "/quill", label: "新任务", icon: "message", match: (path: string) => path === "/quill" || path.startsWith("/quill/s") || path.startsWith("/quill/t") },
+  { href: "/quill/research", label: "广泛研究", icon: "search", match: (path: string) => path.startsWith("/quill/research") },
   { href: "/projects", label: "项目", icon: "folder", match: (path: string) => path.startsWith("/projects") },
   { href: "/artifacts", label: "成果", icon: "archive", match: (path: string) => path.startsWith("/artifacts") },
   { href: "/automations", label: "自动化", icon: "clock", match: (path: string) => path.startsWith("/automations") },
@@ -77,8 +77,8 @@ export function WorkbenchRail({ tasks, activeTaskId, onNew, onOpen }: { tasks: R
   const { user, loggedIn } = useLoggedIn();
 
   const logout = useCallback(async () => {
-    await fetch("/api/fw/logout", { method: "POST" }).catch(() => undefined);
-    router.push("/fw");
+    await fetch("/api/quill/logout", { method: "POST" }).catch(() => undefined);
+    router.push("/quill");
     router.refresh();
   }, [router]);
 
@@ -86,7 +86,7 @@ export function WorkbenchRail({ tasks, activeTaskId, onNew, onOpen }: { tasks: R
     <>
     {/* 移动端（<md）：侧栏收起为顶部横条——品牌 + 横向导航 + 登录态 */}
     <header className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2 md:hidden">
-      <Link href="/fw" className="flex flex-shrink-0 items-center gap-1.5"><Logo size={20} /><Wordmark size={13} sublabel="agent" /></Link>
+      <Link href="/quill" className="flex flex-shrink-0 items-center gap-1.5"><Logo size={20} /><Wordmark size={13} sublabel="agent" /></Link>
       <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="主导航">
         {NAV_LINKS.map((item) => (
           <Link key={item.href} href={item.href} className={`flex-shrink-0 rounded-md px-2 py-1.5 text-xs ${item.match(pathname) ? "bg-bg font-medium text-ink" : "text-ink-2"}`}>{item.label}</Link>
@@ -98,7 +98,7 @@ export function WorkbenchRail({ tasks, activeTaskId, onNew, onOpen }: { tasks: R
     </header>
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface md:flex">
       <div className="flex items-center justify-between px-4 py-4">
-        <Link href="/fw" className="flex items-center gap-2" title="zmzai.cloud">
+        <Link href="/quill" className="flex items-center gap-2" title="zmzai.cloud">
           <Logo size={24} />
           <Wordmark size={15} sublabel="agent" />
         </Link>

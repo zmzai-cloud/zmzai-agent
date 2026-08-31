@@ -76,7 +76,7 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
     setDeleting(true);
     try {
       await json(`/api/workspaces/${encodeURIComponent(detail.id)}`, { method: "DELETE" });
-      router.push("/fw");
+      router.push("/quill");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "删除失败");
       setDeleting(false);
@@ -227,7 +227,7 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
         badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">a.zmzai.cloud</span>}
         actions={<span className="flex items-center gap-2 text-sm text-ink-2"><span className="status-dot" />智能体配置</span>}
       >
-        <Link href="/fw" className={navItemClass(pathname === "/fw")}>任务</Link>
+        <Link href="/quill" className={navItemClass(pathname === "/quill")}>任务</Link>
         <Link href="/audit" className={navItemClass(pathname === "/audit")}>运行审计</Link>
         <Link href="/runs" className={navItemClass(pathname === "/runs" || pathname?.startsWith("/runs/"))}>运行历史</Link>
         <Link href="/webhooks" className={navItemClass(pathname === "/webhooks")}>Webhook</Link>
@@ -339,7 +339,7 @@ export function WorkspaceConfig({ workspaceId }: { workspaceId: string }) {
             </div>
             <div className="mt-3 grid gap-2"><Input value={repository} onChange={(event) => setRepository(event.target.value)} placeholder="owner/repository" aria-label="GitHub 仓库" /><Input value={sourcePath} onChange={(event) => setSourcePath(event.target.value)} placeholder="Skill 或 Plugin 路径" aria-label="仓库路径" /><div className="flex gap-2"><Button type="button" size="sm" variant="secondary" disabled={!repository.trim() || !sourcePath.trim() || Boolean(capabilityBusy)} onClick={() => void importCapability("skill")}>导入 Skill</Button><Button type="button" size="sm" variant="secondary" disabled={!repository.trim() || Boolean(capabilityBusy)} onClick={() => void importCapability("plugin")}>导入 Plugin</Button></div></div>
           </section>
-          <button type="button" className="agent-back-button" onClick={() => router.push("/fw")}><Icon name="arrow-down" size={12} />返回任务</button>
+          <button type="button" className="agent-back-button" onClick={() => router.push("/quill")}><Icon name="arrow-down" size={12} />返回任务</button>
           <div className="mt-6 border-t border-line pt-4">
             {confirmDelete ? (
               <div className="flex flex-col gap-2 text-sm text-ink-2">

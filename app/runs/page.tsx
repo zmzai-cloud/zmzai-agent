@@ -112,7 +112,7 @@ export default function RunsPage() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-bg">
-      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
 
       <div className="flex flex-1 flex-col overflow-y-auto">
         <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line bg-bg/85 px-5 py-3 backdrop-blur-md">

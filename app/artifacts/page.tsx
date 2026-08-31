@@ -110,7 +110,7 @@ export default function ArtifactsPage() {
   if (!loading && !loggedIn) return <LoginGate title="登录后查看成果" />;
 
   return <main className="flex min-h-dvh flex-col bg-bg md:flex-row">
-    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
     <div className="flex min-w-0 flex-1 flex-col">
     <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -119,7 +119,7 @@ export default function ArtifactsPage() {
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">成果</h1>
           <p className="mt-1 text-sm text-ink-3">从任务中生成的文件、网页和报告都会保留在这里。</p>
         </div>
-        <Link href="/fw"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
+        <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
       </header>
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}
 
@@ -200,7 +200,7 @@ export default function ArtifactsPage() {
                 <div className="flex flex-shrink-0 items-center gap-1">
                   {artifact.previewUrl && <IconButton size="sm" label="预览" onClick={() => open(artifact)}><Icon name="eye" size={14} /></IconButton>}
                   {artifact.downloadUrl && <a className="grid size-7 place-items-center rounded-sm border border-line text-ink-3 hover:text-ink" href={artifact.downloadUrl} title="下载"><Icon name="download" size={14} /></a>}
-                  {artifact.taskId && <Link className="grid size-7 place-items-center rounded-sm border border-line text-ink-3 hover:text-ink" href={`/fw/t/${artifact.taskId}`} title="回到任务"><Icon name="arrow-up-right" size={14} /></Link>}
+                  {artifact.taskId && <Link className="grid size-7 place-items-center rounded-sm border border-line text-ink-3 hover:text-ink" href={`/quill/t/${artifact.taskId}`} title="回到任务"><Icon name="arrow-up-right" size={14} /></Link>}
                 </div>
               </div>
             </Card>

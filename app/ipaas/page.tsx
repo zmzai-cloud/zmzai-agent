@@ -180,7 +180,7 @@ export default function IpaasPage() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg md:flex-row">
-      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
       <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
         <header className="flex items-center justify-between">
           <div>

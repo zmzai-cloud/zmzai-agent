@@ -15,7 +15,7 @@
 | `framework/core/tools/mongo-workspace.ts` | `@/lib/{database/mongodb,workspace-edit,workspaces}`、`@/models/*` | **注入**：归一化为 `WorkspaceBackend`（= 现有 `WorkspaceFiles` 接口）；产品的 Mongo 实现留仓库，包提供 JSONL/FS 参考实现 |
 | `framework/core/tools/context.ts` | `@/lib/sandbox-types` | 纯类型，内联进包 |
 
-HTTP 路由（`app/api/fw/**`、`app/api/audit/**`）的产品依赖（auth/session、idempotency、api-error、artifact-storage、各 `@/models`）**不进包**——它们是产品的 server 层。包提供的是**可嵌入的 handler 工厂**，产品的 Next.js 路由薄包装它。
+HTTP 路由（`app/api/quill/**`、`app/api/audit/**`）的产品依赖（auth/session、idempotency、api-error、artifact-storage、各 `@/models`）**不进包**——它们是产品的 server 层。包提供的是**可嵌入的 handler 工厂**，产品的 Next.js 路由薄包装它。
 
 ## 2. 包结构
 
@@ -112,7 +112,7 @@ CLI 用 JSONL store + FS workspace backend + OpenAI-compatible ModelProvider（e
 
 1. 建 `packages/agent-framework`，把 framework/core 的可独立部分搬入（git mv 保留历史），import 路径从 `@/framework/...` 改为 `@zmzai/agent-framework`（tsconfig paths 映射，仓库内联调）。
 2. 把 `mongo-workspace.ts`、`server/context.ts` 的产品实现留在 `zmzai-agent/adapters/`，实现包接口。
-3. 产品仓库的 `app/api/fw` 路由改为包 `createServer(deps)` + 薄包装。
+3. 产品仓库的 `app/api/quill` 路由改为包 `createServer(deps)` + 薄包装。
 4. 产品测试全绿后再考虑把包发布到 npm（或先 workspace 内 monorepo 引用）。
 5. webfetch 工具：M4 spec 列了但没做，M5 一起补（标记 experimental）。
 

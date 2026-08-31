@@ -611,7 +611,7 @@ export default function DevelopersPage() {
   if (!loading && !loggedIn) return <LoginGate title="登录后管理开发者集成" />;
 
   return <main className="flex min-h-dvh flex-col bg-bg md:flex-row">
-    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
     <div className="flex min-w-0 flex-1 flex-col">
     <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -620,7 +620,7 @@ export default function DevelopersPage() {
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">开发者</h1>
           <p className="mt-1 text-sm text-ink-3">让内部服务或外部系统安全地创建任务、接收结果。</p>
         </div>
-        <Link href="/fw"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
+        <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
       </header>
       <Tabs items={tabItems} value={tab} onValueChange={(value) => setTab(value as Tab)} className="mb-6" />
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}

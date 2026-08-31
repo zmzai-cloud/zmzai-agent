@@ -30,7 +30,7 @@ export function selectWebAppSourceFiles(files: Array<{ path: string; content: st
 }
 
 function artifactUrl(sessionId: string, artifactId: string, action: "download" | "preview"): string {
-  return `/api/fw/sessions/${encodeURIComponent(sessionId)}/artifacts/${encodeURIComponent(artifactId)}/${action}`;
+  return `/api/quill/sessions/${encodeURIComponent(sessionId)}/artifacts/${encodeURIComponent(artifactId)}/${action}`;
 }
 
 function sha256(content: Buffer): string {

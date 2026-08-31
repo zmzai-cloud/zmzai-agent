@@ -9,7 +9,7 @@ import { ensureRunForPrompt } from "@/lib/task-run-control";
 import { RunModel } from "@/models/run";
 import { TaskModel } from "@/models/task";
 import { canRunProject, getProjectAccess } from "@/lib/project-access";
-import { maybeGenerateSessionTitle } from "@/lib/fw-session-title";
+import { maybeGenerateSessionTitle } from "@/lib/quill-session-title";
 import { runWithTrace } from "@/lib/telemetry";
 
 export const runtime = "nodejs";

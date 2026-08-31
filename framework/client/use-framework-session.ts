@@ -35,16 +35,16 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const fwApi = {
-  listSessions: (workspaceId?: string) => requestJson<{ sessions: SessionInfo[] }>(`/api/fw/sessions${workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ""}`),
+  listSessions: (workspaceId?: string) => requestJson<{ sessions: SessionInfo[] }>(`/api/quill/sessions${workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ""}`),
   createSession: (input: { workspaceId: string; model: { providerId: string; modelId: string }; prompt?: string; taskId?: string }) =>
-    requestJson<{ session: SessionInfo; task?: { taskId: string } }>("/api/fw/sessions", {
+    requestJson<{ session: SessionInfo; task?: { taskId: string } }>("/api/quill/sessions", {
       method: "POST",
       headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
       body: JSON.stringify(input),
     }),
-  getSession: (sessionId: string) => requestJson<SessionSnapshot>(`/api/fw/sessions/${encodeURIComponent(sessionId)}`),
+  getSession: (sessionId: string) => requestJson<SessionSnapshot>(`/api/quill/sessions/${encodeURIComponent(sessionId)}`),
   prompt: (sessionId: string, input: { text: string; images?: Array<{ url: string; mediaType: string }> }) =>
-    requestJson<{ accepted: boolean; queued: boolean }>(`/api/fw/sessions/${encodeURIComponent(sessionId)}/prompt`, {
+    requestJson<{ accepted: boolean; queued: boolean }>(`/api/quill/sessions/${encodeURIComponent(sessionId)}/prompt`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
@@ -52,19 +52,19 @@ export const fwApi = {
   uploadFile: (sessionId: string, file: File) => {
     const body = new FormData();
     body.set("file", file);
-    return requestJson<{ file: { path: string; bytes: number; revisionId: string } }>(`/api/fw/sessions/${encodeURIComponent(sessionId)}/files`, {
+    return requestJson<{ file: { path: string; bytes: number; revisionId: string } }>(`/api/quill/sessions/${encodeURIComponent(sessionId)}/files`, {
       method: "POST",
       body,
     });
   },
-  abort: (sessionId: string) => requestJson<{ aborted: boolean }>(`/api/fw/sessions/${encodeURIComponent(sessionId)}/abort`, { method: "POST" }),
+  abort: (sessionId: string) => requestJson<{ aborted: boolean }>(`/api/quill/sessions/${encodeURIComponent(sessionId)}/abort`, { method: "POST" }),
   replyPermission: (sessionId: string, requestId: string, reply: Reply, feedback?: string) =>
-    requestJson<{ resolved: boolean }>(`/api/fw/sessions/${encodeURIComponent(sessionId)}/permissions/${encodeURIComponent(requestId)}`, {
+    requestJson<{ resolved: boolean }>(`/api/quill/sessions/${encodeURIComponent(sessionId)}/permissions/${encodeURIComponent(requestId)}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ reply, ...(feedback ? { feedback } : {}) }),
     }),
-  listAgents: () => requestJson<{ agents: AgentSummary[] }>("/api/fw/agents"),
+  listAgents: () => requestJson<{ agents: AgentSummary[] }>("/api/quill/agents"),
 };
 
 export type LiveState = {
@@ -211,7 +211,7 @@ export function useFrameworkSession(sessionId: string | null) {
   useEffect(() => {
     if (!sessionId || !snapshot) return;
     close();
-    const source = new EventSource(`/api/fw/sessions/${encodeURIComponent(sessionId)}/events?since=${lastSeqRef.current}`);
+    const source = new EventSource(`/api/quill/sessions/${encodeURIComponent(sessionId)}/events?since=${lastSeqRef.current}`);
     sourceRef.current = source;
     source.onopen = () => setLive((current) => ({ ...current, streamState: "live" }));
 

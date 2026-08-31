@@ -79,7 +79,7 @@ export default function AutomationEditPage() {
   return <main className="min-h-dvh bg-bg">
     <Navbar sublabel="quill" badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">a.zmzai.cloud</span>}>
       <Link href="/automations" className="text-xs text-ink-3 transition-colors hover:text-ink"><Icon name="arrow-left" size={12} className="mr-1 inline" />返回自动化</Link>
-      <Link href="/fw" className="text-xs text-ink-3 transition-colors hover:text-ink">新对话</Link>
+      <Link href="/quill" className="text-xs text-ink-3 transition-colors hover:text-ink">新对话</Link>
     </Navbar>
     <div className="mx-auto w-[min(100%-2rem,74rem)] py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">

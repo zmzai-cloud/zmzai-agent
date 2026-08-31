@@ -220,7 +220,7 @@ export default function ProjectDetailPage() {
   return <main className="min-h-dvh bg-bg">
     <Navbar sublabel="quill" badge={<span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-3">a.zmzai.cloud</span>}>
       <Link href="/projects" className="text-xs text-ink-3 transition-colors hover:text-ink"><Icon name="arrow-left" size={12} className="mr-1 inline" />返回项目</Link>
-      <Link href="/fw" className="text-xs text-ink-3 transition-colors hover:text-ink">新对话</Link>
+      <Link href="/quill" className="text-xs text-ink-3 transition-colors hover:text-ink">新对话</Link>
     </Navbar>
     <div className="mx-auto w-[min(100%-2rem,74rem)] py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -337,10 +337,10 @@ export default function ProjectDetailPage() {
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <Card padding="md">
-          <SectionHead eyebrow="任务" title="项目任务" right={<Link href="/fw" className="text-xs text-ink-3 underline hover:text-ink">开始新任务 <Icon name="arrow-up-right" size={12} className="inline" /></Link>} />
+          <SectionHead eyebrow="任务" title="项目任务" right={<Link href="/quill" className="text-xs text-ink-3 underline hover:text-ink">开始新任务 <Icon name="arrow-up-right" size={12} className="inline" /></Link>} />
           {tasks.length ? <div className="flex flex-col gap-1">
             {tasks.map((task) => (
-              <Link href={`/fw/t/${task.taskId}`} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface" key={task.taskId}>
+              <Link href={`/quill/t/${task.taskId}`} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface" key={task.taskId}>
                 <Badge variant={statusVariant(task.status)} size="sm">{statusText(task.status)}</Badge>
                 <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-ink">{task.title || "未命名任务"}</strong><small className="block truncate text-xs text-ink-3">{task.goal}</small></span>
                 <small className="flex-shrink-0 text-xs text-ink-3">{formatDate(task.updatedAt)}</small>

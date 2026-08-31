@@ -104,7 +104,7 @@ export function ResearchWorkbench({ researchJobId }: { researchJobId: string | n
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-bg md:flex-row">
-      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="fw-grid">
         <div className="fw-main">
@@ -130,7 +130,7 @@ export function ResearchWorkbench({ researchJobId }: { researchJobId: string | n
                   <div className="flex flex-col gap-2">
                     {items.map((item) => (
                       <Card key={item.researchJobId} padding="sm" variant={item.researchJobId === researchJobId ? "interactive" : "default"} className={item.researchJobId === researchJobId ? "border-ink" : undefined}>
-                        <Link href={`/fw/research/${item.researchJobId}`} className="block">
+                        <Link href={`/quill/research/${item.researchJobId}`} className="block">
                           <div className="flex items-start justify-between gap-2">
                             <strong className="min-w-0 text-sm font-medium text-ink">{item.question}</strong>
                             <Badge variant={statusVariant(item.status)} size="sm">{statusLabel(item.status)}</Badge>
@@ -141,7 +141,7 @@ export function ResearchWorkbench({ researchJobId }: { researchJobId: string | n
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon={<Icon name="search" size={24} />} title="还没有研究" description="从一条需要比较、核验或综合的问题开始。" action={<Link href="/fw"><Button variant="secondary" size="sm"><Icon name="plus" size={13} />开始研究</Button></Link>} />
+                  <EmptyState icon={<Icon name="search" size={24} />} title="还没有研究" description="从一条需要比较、核验或综合的问题开始。" action={<Link href="/quill"><Button variant="secondary" size="sm"><Icon name="plus" size={13} />开始研究</Button></Link>} />
                 )}
               </div>
             </section>
@@ -157,7 +157,7 @@ export function ResearchWorkbench({ researchJobId }: { researchJobId: string | n
                       <h2 className="truncate text-base font-semibold text-ink">{detail.question}</h2>
                       <small className="text-xs text-ink-3">{dateLabel(detail.createdAt)} · 并行度 {detail.maxConcurrency}</small>
                     </div>
-                    <Link href={`/fw/t/${detail.taskId}`}><Button variant="secondary" size="sm"><Icon name="arrow-up-right" size={14} />打开任务</Button></Link>
+                    <Link href={`/quill/t/${detail.taskId}`}><Button variant="secondary" size="sm"><Icon name="arrow-up-right" size={14} />打开任务</Button></Link>
                   </div>
                   <div className="grid grid-cols-3 gap-2 rounded-sm border border-line bg-surface p-3">
                     <div><small className="block text-xs text-ink-3">整体状态</small><Badge variant={statusVariant(detail.status)} size="sm" className="mt-1">{statusLabel(detail.status)}</Badge></div>
@@ -167,7 +167,7 @@ export function ResearchWorkbench({ researchJobId }: { researchJobId: string | n
                   {detail.error && (
                     <div className="flex items-center gap-2 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="alert">
                       <Icon name="warning" size={14} /><span className="min-w-0 flex-1">{detail.error}</span>
-                      <Button type="button" variant="secondary" size="sm" onClick={() => { window.location.href = `/fw/t/${detail.taskId}`; }}><Icon name="refresh" size={13} />去任务处理</Button>
+                      <Button type="button" variant="secondary" size="sm" onClick={() => { window.location.href = `/quill/t/${detail.taskId}`; }}><Icon name="refresh" size={13} />去任务处理</Button>
                     </div>
                   )}
                   <div>
@@ -185,7 +185,7 @@ export function ResearchWorkbench({ researchJobId }: { researchJobId: string | n
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge variant={statusVariant(child.status)} size="sm">{statusLabel(child.status)}</Badge>
-                              <Link href={`/fw/t/${child.taskId}`} title="打开子任务" className="text-ink-3 hover:text-ink"><Icon name="arrow-up-right" size={14} /></Link>
+                              <Link href={`/quill/t/${child.taskId}`} title="打开子任务" className="text-ink-3 hover:text-ink"><Icon name="arrow-up-right" size={14} /></Link>
                             </div>
                           </div>
                           {child.summary && <p className="mt-1 text-sm text-ink-2">{child.summary}</p>}

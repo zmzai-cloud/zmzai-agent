@@ -32,7 +32,7 @@ vi.mock("@/lib/project-access", () => ({
   canRunProject: mocks.canRunProject,
 }));
 
-import { POST } from "@/app/api/fw/sessions/[sessionId]/prompt/route";
+import { POST } from "@/app/api/quill/sessions/[sessionId]/prompt/route";
 
 const ctx = (sessionId = "sess_1") => ({
   params: Promise.resolve({ sessionId }),
@@ -42,7 +42,7 @@ const promptBody = (overrides?: Record<string, unknown>) =>
   JSON.stringify({ text: "Hello agent", ...overrides });
 
 const promptReq = (sessionId = "sess_1", body = promptBody()) =>
-  new NextRequest(`http://localhost/api/fw/sessions/${sessionId}/prompt`, {
+  new NextRequest(`http://localhost/api/quill/sessions/${sessionId}/prompt`, {
     method: "POST",
     body,
     headers: { "content-type": "application/json" },
@@ -59,7 +59,7 @@ beforeEach(() => {
   mocks.getFrameworkRunner.mockReturnValue({ prompt: promptRunner });
 });
 
-describe("POST /api/fw/sessions/.../prompt", () => {
+describe("POST /api/quill/sessions/.../prompt", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
     const res = await POST(promptReq(), ctx());

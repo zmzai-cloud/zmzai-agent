@@ -9,13 +9,13 @@ vi.mock("@/lib/api-error", () => ({
   unauthenticated: () => new Response(JSON.stringify({ code: "UNAUTHENTICATED" }), { status: 401 }),
 }));
 
-import { GET } from "@/app/api/fw/me/route";
+import { GET } from "@/app/api/quill/me/route";
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("GET /api/fw/me", () => {
+describe("GET /api/quill/me", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
     const res = await GET();

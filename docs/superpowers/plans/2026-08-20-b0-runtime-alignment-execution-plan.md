@@ -27,7 +27,7 @@
 | --- | --- | --- | --- |
 | Workspace | `WorkspaceModel`，包含 Agent 配置、文件、权限策略 | 保留现有身份；后续补 Project 层，不把 Workspace 直接改名为 Project | `zmzai-agent` Mongo |
 | Project | 尚无统一产品模型 | 先预留 `projectId` 和访问边界；P1 完成正式模型 | `zmzai-db` schema，P1 发布 |
-| Task | 当前没有独立产品实体；创建 API 是 `POST /api/fw/sessions` | 新增 Task 控制面，保存目标、项目、当前状态和 active Run 引用 | `zmzai-agent` |
+| Task | 当前没有独立产品实体；创建 API 是 `POST /api/quill/sessions` | 新增 Task 控制面，保存目标、项目、当前状态和 active Run 引用 | `zmzai-agent` |
 | Run | 当前 `SessionRunner` 的一次 prompt/run loop；Sandbox 另有 `SandboxRun` | 新增 Run 投影，关联 `sessionId`、`parentRunId`、checkpoint 和状态 | `zmzai-agent` |
 | Subagent | 子代理是带 `parentId` 的 framework Session，父消息有 `subtask` Part | 保留 Session 作为执行上下文，增加 Subagent 投影/汇总 | `zmzai-agent` |
 | ToolCall | framework `Part.type=tool`，状态有 pending/running/completed/error | 由 Part/event 投影成可审计 ToolCall；不再让 UI 解析消息文本 | `zmzai-agent` |

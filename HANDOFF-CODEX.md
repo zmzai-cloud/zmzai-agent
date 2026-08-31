@@ -12,7 +12,7 @@
 
 ```
 zmzai-agent/（git 仓库，main 分支，remote: Ulanxx/zmzai-agent，push 触发 GitHub Actions 自动部署到香港服务器 a.zmzai.cloud）
-├── app/                    # Next.js App Router（/fw 工作台、/audit 审计、/api/fw/*、/api/audit/*）
+├── app/                    # Next.js App Router（/quill 工作台、/audit 审计、/api/quill/*、/api/audit/*）
 ├── framework/              # 产品侧兼容层：Mongo 实现 + 包 re-export（薄壳）
 │   ├── core/session/       #   mongo-models.ts, mongo-store.ts（产品实现）
 │   ├── core/events/        #   mongo-models.ts, mongo-event-log.ts（EventLog 实现）, bus.ts（旧函数名兼容层）
@@ -41,20 +41,20 @@ zmzai-agent/（git 仓库，main 分支，remote: Ulanxx/zmzai-agent，push 触�
 |---|---|---|
 | **M1 骨架** | Session/Message/Part wire 类型、Mongo store、EventLog、权限引擎（ruleset last-match-wins + once/always/reject + always 持久化） | ✅ 上生产 |
 | **M2 Runner** | SessionRunner（PI 适配层）、7 内置工具（read/glob/grep/write/edit/bash/todo）、agent presets（default/readonly/explore/general）、HTTP 路由 | ✅ 上生产 |
-| **M3 产品切换** | /fw 工作台（parts 渲染、内联审批、todo、产物预览）、旧 plan/build 全下线（30+ 文件删除）、审计页重写为 FW 事件源、lease-recovery | ✅ 上生产（commit ea5f65d） |
+| **M3 产品切换** | /quill 工作台（parts 渲染、内联审批、todo、产物预览）、旧 plan/build 全下线（30+ 文件删除）、审计页重写为 FW 事件源、lease-recovery | ✅ 上生产（commit ea5f65d） |
 | **M4 框架化** | task 子代理、.zmzai/agents/*.md 自定义 agent、compaction、JSONL store | ✅ 上生产（commit 3b73bcf + 2 个 parentId 修复） |
 | **M5 抽包** | packages/agent-framework 独立包、5 注入接口、createServer、CLI、OpenAPI、examples | ✅ 上生产（commit 7309f49，lockfile 修复 0907a75） |
 
 ## 3. 当前未提交改动（39 文件）— ✅ 已提交部署（2026-08-25）
 
-原 M5 未提交的 39 个文件已在 P0 一并提交（7309f49 + 0907a75），push main 触发 GitHub Actions 自动部署到 a.zmzai.cloud，quality + deploy 全绿，生产冒烟通过（/fw 200、/ → 307、旧路由 404）。
+原 M5 未提交的 39 个文件已在 P0 一并提交（7309f49 + 0907a75），push main 触发 GitHub Actions 自动部署到 a.zmzai.cloud，quality + deploy 全绿，生产冒烟通过（/quill 200、/ → 307、旧路由 404）。
 
 ## 4. 待办清单（按优先级）
 
 ### P0 — 提交 M5 并部署（✅ 已完成）
 1. commit M5（7309f49，lockfile 修复 0907a75）
 2. push main，GitHub Actions quality + deploy 全绿
-3. 生产冒烟通过（/fw 200、/ → 307、旧路由 404）
+3. 生产冒烟通过（/quill 200、/ → 307、旧路由 404）
 
 ### P1 — 发布 npm（✅ 已完成，2026-08-25）
 - `@zmzai/agent-framework@0.1.0` 已发布到公共 npm（126 文件，tag latest，public access）
@@ -63,7 +63,7 @@ zmzai-agent/（git 仓库，main 分支，remote: Ulanxx/zmzai-agent，push 触�
 - 可选后续：git tag + GitHub Release（2026-08-25 已执行：v0.1.0 tag + Release）
 
 ### P2 — 框架遗留（✅ 全部完成，2026-08-25）
-- **title 异步生成**：`lib/fw-session-title.ts`（maybeGenerateSessionTitle）接线 sessions POST + prompt POST；defaultRelayModel=deepseek-v4-flash；默认值守卫防覆盖用户改过的标题；失败静默降级
+- **title 异步生成**：`lib/quill-session-title.ts`（maybeGenerateSessionTitle）接线 sessions POST + prompt POST；defaultRelayModel=deepseek-v4-flash；默认值守卫防覆盖用户改过的标题；失败静默降级
 - **webfetch 工具**：`packages/agent-framework/src/core/tools/webfetch.ts` 实现（SSRF 私网段拦截 + 256KB 上限 + 15s 超时 + htmlToText，experimental 标记），注册进 builtinTools，11 个单测
 - **JSONL 后端的 workspace facade**：`framework/server/context.ts` FW_MODE=local 全本地链路（store=JSONL、workspace=FS、sandbox=subprocess、eventLog=memory、agents=FS 读取）；修复 local 模式 runner/API store 分裂隐藏 bug（mongoSessionStore → defaultStore）
 - **子代理嵌套端到端单测**：runner.test.ts 新增 task tool end-to-end 测试（faux 三响应驱动父子嵌套，验证 child session/subtask part/父总结）；task 工具参数名是 `subagent_type`，builtinDefaults `"*": "allow"` 下默认免审批

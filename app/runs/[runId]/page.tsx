@@ -148,15 +148,15 @@ export default function RunDetailPage() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-bg">
-      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
 
       <div className="flex flex-1 flex-col overflow-y-auto">
         {/* Header */}
         <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line bg-bg/85 px-5 py-3 backdrop-blur-md">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Link href="/fw" className="text-xs text-muted transition-colors hover:text-accent">任务</Link>
+            <Link href="/quill" className="text-xs text-muted transition-colors hover:text-accent">任务</Link>
             <span className="text-muted">/</span>
-            <Link href={`/fw/t/${run.taskId}`} className="min-w-0 truncate text-sm font-medium text-ink transition-colors hover:text-accent">{run.taskTitle}</Link>
+            <Link href={`/quill/t/${run.taskId}`} className="min-w-0 truncate text-sm font-medium text-ink transition-colors hover:text-accent">{run.taskTitle}</Link>
             <span className="text-muted">/</span>
             <span className="font-mono text-xs text-muted">{run.runId}</span>
           </div>
@@ -316,7 +316,7 @@ export default function RunDetailPage() {
 
           {/* Quick links */}
           <div className="flex flex-wrap gap-3 border-t border-line pt-4 text-xs">
-            <Link href={`/fw/t/${run.taskId}`} className="flex items-center gap-1 text-accent transition-colors hover:text-accent/80">
+            <Link href={`/quill/t/${run.taskId}`} className="flex items-center gap-1 text-accent transition-colors hover:text-accent/80">
               <Icon name="message-square" size={12} />打开任务对话
             </Link>
             <Link href="/audit" className="flex items-center gap-1 text-muted transition-colors hover:text-accent">

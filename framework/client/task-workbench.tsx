@@ -541,7 +541,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
         setPrompt("");
         setSelectedFiles([]);
         setResearchMode(false);
-        router.push(`/fw/t/${result.taskId}`);
+        router.push(`/quill/t/${result.taskId}`);
         return;
       }
       const imagePayload = imageFiles.length
@@ -562,8 +562,8 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
           await uploadFiles(created.session.id, textFiles);
           await fwApi.prompt(created.session.id, promptInput);
         }
-        if (created.task?.taskId) router.push(`/fw/t/${created.task.taskId}`);
-        else router.push(`/fw/s/${created.session.id}`);
+        if (created.task?.taskId) router.push(`/quill/t/${created.task.taskId}`);
+        else router.push(`/quill/s/${created.session.id}`);
       }
       setPrompt("");
       setSelectedFiles([]);
@@ -640,7 +640,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
     if (!taskId) return;
     try {
       const result = await json<{ task: TaskRecord }>(`/api/tasks/${encodeURIComponent(taskId)}/branch`, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify({}) });
-      router.push(`/fw/t/${result.task.taskId}`);
+      router.push(`/quill/t/${result.task.taskId}`);
     } catch (error: unknown) { setActionError(error instanceof Error ? error.message : "创建任务分支失败"); }
   }, [router, taskId]);
 
@@ -693,7 +693,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); }
   };
 
-  const newTask = () => { setResolvedTaskId(null); setTaskDetail(null); setPrompt(""); setResearchMode(false); router.push("/fw"); };
+  const newTask = () => { setResolvedTaskId(null); setTaskDetail(null); setPrompt(""); setResearchMode(false); router.push("/quill"); };
 
   const { loggedIn: meLoggedIn, loading: meLoading } = useLoggedIn();
   if (!meLoading && !meLoggedIn && (routeTaskId || routeSessionId)) return <LoginGate title="登录后查看任务" />;
@@ -708,7 +708,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-bg md:flex-row">
-      {!(sessionId || taskId) && <WorkbenchRail tasks={tasks} activeTaskId={taskId} onNew={newTask} onOpen={(id) => { setNavigatingToTask(id); router.push(`/fw/t/${id}`); }} />}
+      {!(sessionId || taskId) && <WorkbenchRail tasks={tasks} activeTaskId={taskId} onNew={newTask} onOpen={(id) => { setNavigatingToTask(id); router.push(`/quill/t/${id}`); }} />}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {!sessionId && !taskId ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-12">
@@ -783,7 +783,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
         <section className="fw-conversation">
           <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3">
             <div className="min-w-0">
-              <Link href="/fw" className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-ink-3 hover:text-ink"><Icon name="chevron-left" size={12} />{selectedWorkspace?.name ?? "返回工作台"}</Link>
+              <Link href="/quill" className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-ink-3 hover:text-ink"><Icon name="chevron-left" size={12} />{selectedWorkspace?.name ?? "返回工作台"}</Link>
               <h1 className="font-serif truncate text-lg font-semibold tracking-tight">{task?.title ?? snapshot?.session.title ?? "开始一个新任务"}</h1>
             </div>
             <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">

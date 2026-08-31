@@ -15,7 +15,7 @@ import { RunModel } from "@/models/run";
 import { TaskModel } from "@/models/task";
 import { canRunProject, getProjectAccess } from "@/lib/project-access";
 import { ProjectBudgetExceededError } from "@/lib/project-budget";
-import { maybeGenerateSessionTitle } from "@/lib/fw-session-title";
+import { maybeGenerateSessionTitle } from "@/lib/quill-session-title";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

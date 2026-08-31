@@ -77,15 +77,15 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
 
   // 当前登录用户（header 展示 + 退出）。
   useEffect(() => {
-    void fetch("/api/fw/me", { cache: "no-store" })
+    void fetch("/api/quill/me", { cache: "no-store" })
       .then((response) => (response.ok ? (response.json() as Promise<{ user: { name: string; email: string } }>) : null))
       .then((body) => setUser(body?.user ?? null))
       .catch(() => setUser(null));
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch("/api/fw/logout", { method: "POST" }).catch(() => undefined);
-    router.push("/fw");
+    await fetch("/api/quill/logout", { method: "POST" }).catch(() => undefined);
+    router.push("/quill");
     router.refresh();
   }, [router]);
 
@@ -175,7 +175,7 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
         }
         setPrompt("");
         setSelectedFiles([]);
-        router.push(`/fw/s/${result.session.id}`);
+        router.push(`/quill/s/${result.session.id}`);
       } catch (cause) {
         setActionError(cause instanceof Error ? cause.message : "无法创建会话");
       } finally {
@@ -237,7 +237,7 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
   );
 
   // 仅首次加载（无快照）时显示全屏 loading；会话切换时保留旧内容直到新快照到达，
-  // 避免 /fw → /fw/s/:id 或会话间切换整页闪烁。
+  // 避免 /quill → /quill/s/:id 或会话间切换整页闪烁。
   if (loading && !snapshot) return <main className="workbench-loading">正在建立工作台…</main>;
   if (loadError) return <main className="workbench-loading">{loadError}</main>;
 
@@ -260,11 +260,11 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
         }
       >
         {sessionId && (
-          <Link href="/fw" className={navItemClass(false)} title="返回工作台">
+          <Link href="/quill" className={navItemClass(false)} title="返回工作台">
             <Icon name="chevron-left" size={12} />返回
           </Link>
         )}
-        <Link href="/fw" className={navItemClass(pathname === "/fw")}>新任务</Link>
+        <Link href="/quill" className={navItemClass(pathname === "/quill")}>新任务</Link>
         <Link href="/audit" className={navItemClass(pathname === "/audit")}>运行审计</Link>
       </Navbar>
       {actionError && (
@@ -326,7 +326,7 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
               <IconButton size="md" label="新建智能体" onClick={() => setCreatingWs((value) => !value)}>
                 <Icon name="plus" size={14} />
               </IconButton>
-              <IconButton size="md" label="配置当前智能体" disabled={!workspaceId} onClick={() => workspaceId && router.push(`/fw/w/${workspaceId}`)}>
+              <IconButton size="md" label="配置当前智能体" disabled={!workspaceId} onClick={() => workspaceId && router.push(`/quill/w/${workspaceId}`)}>
                 <Icon name="settings" size={14} />
               </IconButton>
             </div>
@@ -360,7 +360,7 @@ export function FrameworkWorkbench({ sessionId }: { sessionId: string | null }) 
                 {recentSessions.slice(0, 4).map((item) => (
                   <Button type="button" key={item.id} variant="ghost"
                     className="h-auto w-full min-w-0 justify-start rounded-md px-3 py-2.5 text-left hover:bg-surface-2"
-                    onClick={() => router.push(`/fw/s/${item.id}`)}>
+                    onClick={() => router.push(`/quill/s/${item.id}`)}>
                     <span className="flex w-full min-w-0 flex-col items-start gap-0.5">
                       <strong className="block w-full truncate text-sm font-medium text-ink">{item.title}</strong>
                       <small className="font-mono text-xs text-ink-3">{item.agent}</small>

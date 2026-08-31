@@ -1,14 +1,16 @@
 # a.zmzai.cloud FW 协议真机验收清单
 
+> 2026-08-31 更新：`/fw` 路径已重命名为 `/quill`（品牌名 Quill 对齐），本清单 URL 已同步；旧路径由 `middleware.ts` 做 301（页面）/ 308（API）跳转。
+
 > 目标：在真实依赖（Mongo + Relay 模型 + OpenSandbox）下验证 M1–M3 交付的 FW 协议端到端成立。以"写 10 页 PPT"为垂直场景。
 > 前置：部署环境具备 `.env.local`（`MONGODB_URI`、`AUTH_SECRET`、`RELAY_AGENT_SERVICE_SECRET_CURRENT`、`SANDBOX_AGENT_SERVICE_SECRET_CURRENT`），且沙箱镜像已预装 `python-pptx`（见 2026-08-11-coding-agent spec §5.3）。
 
 ## 0. 冒烟：服务起得来
 
 ```bash
-curl -s https://a.zmzai.cloud/fw            # 200，返回工作台 HTML
-curl -s https://a.zmzai.cloud/              # 307/308 → /fw（默认切换生效）
-curl -s https://a.zmzai.cloud/api/fw/agents # 401（未登录）或 agents 列表
+curl -s https://a.zmzai.cloud/quill            # 200，返回工作台 HTML
+curl -s https://a.zmzai.cloud/              # 307/308 → /quill（默认切换生效）
+curl -s https://a.zmzai.cloud/api/quill/agents # 401（未登录）或 agents 列表
 ```
 
 ## 1. 会话生命周期（FW 协议）
@@ -18,7 +20,7 @@ curl -s https://a.zmzai.cloud/api/fw/agents # 401（未登录）或 agents 列�
 WID=<已存在的 workspaceId>
 
 # 1.1 创建会话并立即跑第一个 prompt
-curl -s -X POST https://a.zmzai.cloud/api/fw/sessions \
+curl -s -X POST https://a.zmzai.cloud/api/quill/sessions \
   -H "cookie: $COOKIE" -H "content-type: application/json" \
   -d "{\"workspaceId\":\"$WID\",\"model\":{\"providerId\":\"relay\",\"modelId\":\"<模型>\"},\"prompt\":\"列出当前 workspace 的文件\"}"
 # → 201 { session: { id: "ses_...", ... } }
@@ -26,18 +28,18 @@ curl -s -X POST https://a.zmzai.cloud/api/fw/sessions \
 SID=<返回的 session id>
 
 # 1.2 读会话（messages + parts 投影）
-curl -s https://a.zmzai.cloud/api/fw/sessions/$SID -H "cookie: $COOKIE"
+curl -s https://a.zmzai.cloud/api/quill/sessions/$SID -H "cookie: $COOKIE"
 # → session + messages[]；assistant 消息含 step-start/text/step-finish parts
 
 # 1.3 SSE 事件流（另开终端，应看到 session.status / message.part.* 事件）
-curl -N https://a.zmzai.cloud/api/fw/sessions/$SID/events -H "cookie: $COOKIE"
+curl -N https://a.zmzai.cloud/api/quill/sessions/$SID/events -H "cookie: $COOKIE"
 ```
 
 ## 2. 权限引擎（内联审批）
 
 ```bash
 # 2.1 发一个触发 bash 的任务
-curl -s -X POST https://a.zmzai.cloud/api/fw/sessions/$SID/prompt \
+curl -s -X POST https://a.zmzai.cloud/api/quill/sessions/$SID/prompt \
   -H "cookie: $COOKIE" -H "content-type: application/json" \
   -d '{"text":"用 bash 运行 ls 看看目录"}'
 # → 202 { accepted: true, queued: false }
@@ -45,7 +47,7 @@ curl -s -X POST https://a.zmzai.cloud/api/fw/sessions/$SID/prompt \
 
 # 2.2 拒绝 → Agent 应收到反馈且不执行
 RID=<permission.asked 里的 request.id>
-curl -s -X POST https://a.zmzai.cloud/api/fw/sessions/$SID/permissions/$RID \
+curl -s -X POST https://a.zmzai.cloud/api/quill/sessions/$SID/permissions/$RID \
   -H "cookie: $COOKIE" -H "content-type: application/json" \
   -d '{"reply":"reject","feedback":"先别跑"}'
 # → { resolved: true }；SSE 出现 permission.replied + tool part status:error
@@ -57,7 +59,7 @@ curl -s -X POST https://a.zmzai.cloud/api/fw/sessions/$SID/permissions/$RID \
 ## 3. PPT 垂直场景（spec §8 验收路径）
 
 ```bash
-curl -s -X POST https://a.zmzai.cloud/api/fw/sessions \
+curl -s -X POST https://a.zmzai.cloud/api/quill/sessions \
   -H "cookie: $COOKIE" -H "content-type: application/json" \
   -d "{\"workspaceId\":\"$WID\",\"model\":{\"providerId\":\"relay\",\"modelId\":\"<模型>\"},\"prompt\":\"写一份 10 页季度汇报 PPT，用 python-pptx 生成 quarterly.pptx\"}"
 ```
@@ -71,7 +73,7 @@ curl -s -X POST https://a.zmzai.cloud/api/fw/sessions \
 ```bash
 # 3.1 下载产物验证无损
 AID=<artifact.created 的 artifactId>
-curl -s -o /tmp/q.pptx https://a.zmzai.cloud/api/fw/sessions/$SID/artifacts/$AID/download -H "cookie: $COOKIE"
+curl -s -o /tmp/q.pptx https://a.zmzai.cloud/api/quill/sessions/$SID/artifacts/$AID/download -H "cookie: $COOKIE"
 file /tmp/q.pptx   # → Microsoft PowerPoint / Zip archive
 # 用办公软件打开 /tmp/q.pptx 确认 10 页无损坏
 ```
@@ -81,7 +83,7 @@ file /tmp/q.pptx   # → Microsoft PowerPoint / Zip archive
 ```bash
 # 4.1 运行中再发一条 → 202 { queued: true }，会话详情 queuedPrompts 有 1 条
 # 4.2 当前 run 结束后自动续跑第二条（SSE 可见新一轮 message.* 事件）
-# 4.3 abort：POST /api/fw/sessions/$SID/abort → 清空队列 + 停止当前 run
+# 4.3 abort：POST /api/quill/sessions/$SID/abort → 清空队列 + 停止当前 run
 ```
 
 ## 5. 审计页

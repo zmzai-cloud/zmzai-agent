@@ -62,7 +62,7 @@ export default function ProjectsPage() {
   if (!loading && !loggedIn) return <LoginGate title="登录后查看项目" />;
 
   return <main className="flex min-h-dvh flex-col bg-bg md:flex-row">
-    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
     <div className="flex min-w-0 flex-1 flex-col">
     <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -71,7 +71,7 @@ export default function ProjectsPage() {
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">项目</h1>
           <p className="mt-1 text-sm text-ink-3">把任务、资料和持续目标放在同一个工作空间里。</p>
         </div>
-        <Link href="/fw"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
+        <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
       </header>
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}
 
@@ -107,7 +107,7 @@ export default function ProjectsPage() {
             </Link>
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
               {tasks.length ? tasks.slice(0, 4).map((task) => (
-                <Link href={`/fw/t/${task.taskId}`} key={task.taskId} className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-2 hover:bg-surface-2">
+                <Link href={`/quill/t/${task.taskId}`} key={task.taskId} className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-2 hover:bg-surface-2">
                   <Badge variant={taskStatusVariant(task.status)} size="sm">{taskStatusLabel(task.status)}</Badge>
                   <span className="max-w-[12rem] truncate">{task.title || "未命名任务"}</span>
                 </Link>

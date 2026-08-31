@@ -29,7 +29,7 @@ vi.mock("@/lib/project-access", () => ({
   canRunProject: mocks.canRunProject,
 }));
 
-import { POST } from "@/app/api/fw/sessions/[sessionId]/abort/route";
+import { POST } from "@/app/api/quill/sessions/[sessionId]/abort/route";
 
 const ctx = (sessionId = "sess_1") => ({ params: Promise.resolve({ sessionId }) });
 const abortFn = vi.fn();
@@ -42,7 +42,7 @@ beforeEach(() => {
   abortFn.mockResolvedValue(undefined);
 });
 
-describe("POST /api/fw/sessions/.../abort", () => {
+describe("POST /api/quill/sessions/.../abort", () => {
   it("returns 401 when not authenticated", async () => {
     mocks.currentUser.mockResolvedValue(null);
     const res = await POST(new NextRequest("http://localhost"), ctx());

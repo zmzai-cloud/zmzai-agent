@@ -37,7 +37,7 @@ export default function ConnectorsPage() {
   if (!loading && !loggedIn) return <LoginGate title="登录后管理连接器" />;
 
   return <main className="flex min-h-dvh flex-col bg-bg md:flex-row">
-    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+    <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
     <div className="flex min-w-0 flex-1 flex-col">
     <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -46,7 +46,7 @@ export default function ConnectorsPage() {
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-ink">连接器</h1>
           <p className="mt-1 text-sm text-ink-3">管理 Agent 可以访问的 MCP 服务和授权范围。</p>
         </div>
-        <Link href="/fw"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
+        <Link href="/quill"><Button variant="secondary" size="sm">新对话 <Icon name="arrow-up-right" size={14} /></Button></Link>
       </header>
       {error && <div className="mb-4 rounded-sm border-l-2 border-danger bg-danger/10 px-3 py-2 text-sm text-ink" role="status">{error}</div>}
 

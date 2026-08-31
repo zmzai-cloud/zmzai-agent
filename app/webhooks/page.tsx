@@ -119,7 +119,7 @@ export default function WebhooksPage() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg md:flex-row">
-      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/fw"; }} onOpen={() => undefined} />
+      <WorkbenchRail tasks={[]} activeTaskId={null} onNew={() => { window.location.href = "/quill"; }} onOpen={() => undefined} />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="mx-auto flex w-[min(100%-2rem,74rem)] flex-1 flex-col py-8">
           <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
