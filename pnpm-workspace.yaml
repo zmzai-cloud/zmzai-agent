@@ -1,8 +1,13 @@
 packages:
   - "packages/*"
 
+# pnpm 10.34.5 起只认这里的 allowBuilds，package.json 的 pnpm.onlyBuiltDependencies
+# 已被忽略（装依赖时会打 WARN 并因 ERR_PNPM_IGNORED_BUILDS 失败）。
+# node-pty 是原生模块，服务器需 build-essential；之前放行过，锁文件没变时
+# install 是空操作不会触发检查，一旦依赖变动就会炸。
 allowBuilds:
   '@google/genai': false
+  node-pty: true
   protobufjs: false
   sharp: false
   unrs-resolver: true
