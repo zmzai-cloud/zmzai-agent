@@ -705,6 +705,13 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
   if (loadError) return <main className="workbench-loading">{loadError}</main>;
 
   const loginHref = process.env.NODE_ENV === "development" ? "/dev/login" : "https://auth.zmzai.cloud/login";
+  const taskStarters = [
+    { icon: "activity", title: "分析经营数据", detail: "趋势、异常与增长机会", prompt: "分析上传的经营数据，找出关键趋势、异常和增长机会，并给出优先行动建议。", research: false },
+    { icon: "file-text", title: "制作汇报材料", detail: "结论、依据与行动建议", prompt: "根据现有资料，整理为一份包含结论、数据依据和行动建议的管理层汇报。", research: false },
+    { icon: "edit", title: "整理客户洞察", detail: "需求、问题与优先级", prompt: "阅读客户反馈、访谈或工单资料，归纳客户需求、问题与优先级，并形成洞察摘要。", research: false },
+    { icon: "search", title: "调研市场机会", detail: "行业、竞品与机会判断", prompt: "调研目标行业、竞品和用户需求，给出有来源依据的市场机会与建议。", research: true },
+  ] as const;
+  const [featuredStarter, ...secondaryStarters] = taskStarters;
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-bg md:flex-row">
@@ -764,21 +771,22 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
             </div>
           </form>
           <div className="mt-9 flex max-w-4xl items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-3">从一个常见任务开始</p><h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink">今天，要推进什么？</h2></div><span className="hidden text-sm text-ink-3 sm:block">选择后可继续编辑任务简报</span></div>
-          <div className="mt-4 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {([
-              { icon: "activity", title: "分析经营数据", detail: "趋势、异常与增长机会", prompt: "分析上传的经营数据，找出关键趋势、异常和增长机会，并给出优先行动建议。", research: false },
-              { icon: "file-text", title: "制作汇报材料", detail: "结论、依据与行动建议", prompt: "根据现有资料，整理为一份包含结论、数据依据和行动建议的管理层汇报。", research: false },
-              { icon: "edit", title: "整理客户洞察", detail: "需求、问题与优先级", prompt: "阅读客户反馈、访谈或工单资料，归纳客户需求、问题与优先级，并形成洞察摘要。", research: false },
-              { icon: "search", title: "调研市场机会", detail: "行业、竞品与机会判断", prompt: "调研目标行业、竞品和用户需求，给出有来源依据的市场机会与建议。", research: true },
-            ] as const).map((example) => (
-              <button key={example.title} type="button" className="group min-h-36 rounded-xl border border-[#dfe4e1] bg-surface p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#8bad9f] hover:shadow-[0_12px_28px_rgba(26,59,53,0.08)]" onClick={() => { setPrompt(example.prompt); setResearchMode(example.research); }}>
-                <span className="grid size-8 place-items-center rounded-md bg-[#e7f1ec] text-[#176b62]"><Icon name={example.icon} size={15} /></span>
-                <strong className="mt-6 block text-sm font-semibold text-ink">{example.title}</strong>
-                <span className="mt-1 block text-xs leading-5 text-ink-3">{example.detail}</span>
-              </button>
-            ))}
+          <div className="mt-4 grid w-full max-w-4xl grid-cols-1 gap-3 lg:grid-cols-[1.45fr_1fr]">
+            <button type="button" className="group relative min-h-64 overflow-hidden rounded-2xl bg-[#155f58] p-5 text-left text-white shadow-[0_14px_32px_rgba(21,95,88,0.18)] transition-all hover:-translate-y-0.5 hover:bg-[#104f49] hover:shadow-[0_18px_38px_rgba(21,95,88,0.26)] sm:p-6" onClick={() => { setPrompt(featuredStarter.prompt); setResearchMode(featuredStarter.research); }}>
+              <div aria-hidden="true" className="absolute -right-9 -top-8 size-52 rounded-full border border-white/15" />
+              <div aria-hidden="true" className="absolute right-8 top-10 size-28 rounded-full border border-white/10" />
+              <div aria-hidden="true" className="absolute bottom-0 right-0 h-24 w-44 bg-[linear-gradient(135deg,transparent_20%,rgba(208,237,220,0.18)_21%,rgba(208,237,220,0.18)_23%,transparent_24%,transparent_40%,rgba(208,237,220,0.18)_41%,rgba(208,237,220,0.18)_43%,transparent_44%)]" />
+              <div className="relative flex h-full flex-col"><span className="grid size-9 place-items-center rounded-lg bg-white/15 text-[#d9f4e7]"><Icon name={featuredStarter.icon} size={17} /></span><span className="mt-7 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#b9ded3]">推荐起点 · 01</span><strong className="mt-2 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">{featuredStarter.title}</strong><span className="mt-2 text-sm text-[#d2e8df]">{featuredStarter.detail}</span><span className="mt-auto flex items-center gap-2 pt-8 text-sm font-medium text-white">开始分析 <span className="grid size-6 place-items-center rounded-full border border-white/30 transition-transform group-hover:translate-x-1">→</span></span></div>
+            </button>
+            <div className="grid gap-3">
+              {secondaryStarters.map((example, index) => (
+                <button key={example.title} type="button" className="group flex min-h-20 items-center gap-4 rounded-xl border border-[#dfe4e1] bg-surface p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#8bad9f] hover:shadow-[0_10px_24px_rgba(26,59,53,0.08)]" onClick={() => { setPrompt(example.prompt); setResearchMode(example.research); }}>
+                  <span className="text-xs font-medium tabular-nums text-[#9aaba4]">0{index + 2}</span><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#e8f1ed] text-[#176b62]"><Icon name={example.icon} size={16} /></span><span className="min-w-0"><strong className="block text-sm font-semibold text-ink">{example.title}</strong><span className="mt-0.5 block truncate text-xs text-ink-3">{example.detail}</span></span><span aria-hidden="true" className="ml-auto text-lg text-[#9aaba4] transition-transform group-hover:translate-x-1">→</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="mt-10 flex max-w-4xl flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#d8dedb] pt-5 text-xs text-ink-3"><span className="font-medium text-ink-2">从问题到交付</span><span>研究与分析</span><span>文档与汇报</span><span>数据与图表</span><span>可下载成果</span></div>
+          <div className="mt-8 flex max-w-4xl flex-wrap items-center gap-2 border-t border-[#d8dedb] pt-5 text-xs"><span className="mr-2 font-medium text-ink-2">从问题到交付</span>{["研究与分析", "文档与汇报", "数据与图表", "可下载成果"].map((item) => <span key={item} className="rounded-full border border-[#dce5e0] bg-surface px-2.5 py-1 text-ink-3">{item}</span>)}</div>
           </div>
         </div>
       ) : (
