@@ -718,19 +718,19 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
       {!(sessionId || taskId) && <WorkbenchRail tasks={tasks} activeTaskId={taskId} onNew={newTask} onOpen={(id) => { setNavigatingToTask(id); router.push(`/quill/t/${id}`); }} />}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {!sessionId && !taskId ? (
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f7f3] px-4 py-5 sm:px-7 sm:py-7 lg:px-10">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 sm:px-7 sm:py-7 lg:px-10">
           <div className="mx-auto flex w-full max-w-5xl flex-col pb-10 pt-2 sm:pt-5">
             <div className="mb-14 flex items-center justify-between border-b border-line pb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-3 sm:mb-20">
               <span className="flex items-center gap-2 text-ink"><span className="grid size-6 place-items-center rounded-md bg-ink text-[10px] text-paper">q</span> Quill</span>
               <span>新建任务</span>
             </div>
             <section className="max-w-3xl">
-              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#176b62]">你的业务工作台</p>
-              <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-[1.06] tracking-[-0.045em] text-ink sm:text-5xl lg:text-6xl">把一个业务目标，<br className="hidden sm:block" />变成<span className="text-[#176b62]">可交付的成果</span>。</h1>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-ink-2">你的业务工作台</p>
+              <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-[1.06] tracking-[-0.045em] text-ink sm:text-5xl lg:text-6xl">把一个业务目标，<br className="hidden sm:block" />变成<span className="text-accent">可交付的成果</span>。</h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-ink-2 sm:text-lg">从一段任务简报或一份资料开始。Quill 会研究、制作、核查，并把清晰的结论与成果交到你手上。</p>
             </section>
           <form
-            className="mt-10 w-full max-w-4xl rounded-2xl border border-[#d8dedb] bg-surface p-4 shadow-[0_16px_45px_rgba(26,59,53,0.08)] sm:p-5"
+            className="mt-10 w-full max-w-4xl rounded-md border border-line bg-surface p-4 shadow-sm sm:p-5"
             onSubmit={(event: FormEvent) => { event.preventDefault(); void send(); }}
           >
             <div className="mb-3 flex items-center justify-between px-1 text-xs font-medium text-ink-2"><label htmlFor="task-brief">描述你希望达成的结果</label><span className="hidden text-ink-3 sm:inline">Enter 发送 · Shift + Enter 换行</span></div>
@@ -770,23 +770,19 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
               </button>
             </div>
           </form>
-          <div className="mt-9 flex max-w-4xl items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-3">从一个常见任务开始</p><h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink">今天，要推进什么？</h2></div><span className="hidden text-sm text-ink-3 sm:block">选择后可继续编辑任务简报</span></div>
-          <div className="mt-4 grid w-full max-w-4xl grid-cols-1 gap-3 lg:grid-cols-[1.45fr_1fr]">
-            <button type="button" className="group relative min-h-64 overflow-hidden rounded-2xl bg-[#155f58] p-5 text-left text-white shadow-[0_14px_32px_rgba(21,95,88,0.18)] transition-all hover:-translate-y-0.5 hover:bg-[#104f49] hover:shadow-[0_18px_38px_rgba(21,95,88,0.26)] sm:p-6" onClick={() => { setPrompt(featuredStarter.prompt); setResearchMode(featuredStarter.research); }}>
-              <div aria-hidden="true" className="absolute -right-9 -top-8 size-52 rounded-full border border-white/15" />
-              <div aria-hidden="true" className="absolute right-8 top-10 size-28 rounded-full border border-white/10" />
-              <div aria-hidden="true" className="absolute bottom-0 right-0 h-24 w-44 bg-[linear-gradient(135deg,transparent_20%,rgba(208,237,220,0.18)_21%,rgba(208,237,220,0.18)_23%,transparent_24%,transparent_40%,rgba(208,237,220,0.18)_41%,rgba(208,237,220,0.18)_43%,transparent_44%)]" />
-              <div className="relative flex h-full flex-col"><span className="grid size-9 place-items-center rounded-lg bg-white/15 text-[#d9f4e7]"><Icon name={featuredStarter.icon} size={17} /></span><span className="mt-7 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#b9ded3]">推荐起点 · 01</span><strong className="mt-2 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">{featuredStarter.title}</strong><span className="mt-2 text-sm text-[#d2e8df]">{featuredStarter.detail}</span><span className="mt-auto flex items-center gap-2 pt-8 text-sm font-medium text-white">开始分析 <span className="grid size-6 place-items-center rounded-full border border-white/30 transition-transform group-hover:translate-x-1">→</span></span></div>
-            </button>
-            <div className="grid gap-3">
-              {secondaryStarters.map((example, index) => (
-                <button key={example.title} type="button" className="group flex min-h-20 items-center gap-4 rounded-xl border border-[#dfe4e1] bg-surface p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#8bad9f] hover:shadow-[0_10px_24px_rgba(26,59,53,0.08)]" onClick={() => { setPrompt(example.prompt); setResearchMode(example.research); }}>
-                  <span className="text-xs font-medium tabular-nums text-[#9aaba4]">0{index + 2}</span><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#e8f1ed] text-[#176b62]"><Icon name={example.icon} size={16} /></span><span className="min-w-0"><strong className="block text-sm font-semibold text-ink">{example.title}</strong><span className="mt-0.5 block truncate text-xs text-ink-3">{example.detail}</span></span><span aria-hidden="true" className="ml-auto text-lg text-[#9aaba4] transition-transform group-hover:translate-x-1">→</span>
+          <div className="mt-9 flex max-w-4xl items-end justify-between gap-4 border-t-2 border-rule pt-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-3">从一个常见任务开始</p><h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink">今天，要推进什么？</h2></div><span className="hidden text-sm text-ink-3 sm:block">选择后可继续编辑任务简报</span></div>
+          <div className="mt-4 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[featuredStarter, ...secondaryStarters].map((example, index) => (
+              <Card key={example.title} variant="interactive" padding="none" animatedHover className={index === 0 ? "border-t-2 border-t-rule" : undefined}>
+                <button type="button" className="flex min-h-40 w-full flex-col items-start p-4 text-left" onClick={() => { setPrompt(example.prompt); setResearchMode(example.research); }}>
+                  <div className="flex w-full items-start justify-between gap-3"><span className="font-mono text-xs text-ink-3">0{index + 1}</span><span className="grid size-8 place-items-center rounded-sm border border-line bg-surface-2 text-ink-2"><Icon name={example.icon} size={15} /></span></div>
+                  <strong className={`mt-auto block text-base text-ink ${index === 0 ? "font-semibold" : "font-medium"}`}>{example.title}</strong>
+                  <span className="mt-1 block text-xs leading-5 text-ink-3">{example.detail}</span>
                 </button>
-              ))}
-            </div>
+              </Card>
+            ))}
           </div>
-          <div className="mt-8 flex max-w-4xl flex-wrap items-center gap-2 border-t border-[#d8dedb] pt-5 text-xs"><span className="mr-2 font-medium text-ink-2">从问题到交付</span>{["研究与分析", "文档与汇报", "数据与图表", "可下载成果"].map((item) => <span key={item} className="rounded-full border border-[#dce5e0] bg-surface px-2.5 py-1 text-ink-3">{item}</span>)}</div>
+          <div className="mt-7 flex max-w-4xl flex-wrap items-center gap-x-5 gap-y-1 border-t border-line pt-4 text-xs text-ink-3"><span className="font-medium text-ink-2">从问题到交付</span><span>研究与分析</span><span>文档与汇报</span><span>数据与图表</span><span>可下载成果</span></div>
           </div>
         </div>
       ) : (
