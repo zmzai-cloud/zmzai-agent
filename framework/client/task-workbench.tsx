@@ -726,7 +726,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
             </div>
             <section className="max-w-3xl">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-3">工作台</p>
-              <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">把任务交给 Quill</h1>
+              <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-5xl">把任务交给 Quill</h1>
               <p className="mt-3 text-sm leading-6 text-ink-2 sm:text-base">描述目标并附上必要资料，即可开始处理。</p>
             </section>
           <form
