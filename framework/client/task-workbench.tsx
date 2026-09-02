@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
-import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, PageHeader, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tabs, Textarea, type BadgeProps } from "@zmzai/theme";
+import { Badge, Button, Card, EmptyState, Icon, IconButton, Input, Select as ThemeSelect, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tabs, Textarea, type BadgeProps } from "@zmzai/theme";
 
 import { LoginGate, useLoggedIn, WorkbenchRail } from "@/framework/client/workbench-rail";
 import { ArtifactPreviewCard, EditCard, groupAssistantMessages, MessageView, PermissionCard, PptxPreview } from "@/framework/client/parts";
@@ -711,31 +711,33 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
       {!(sessionId || taskId) && <WorkbenchRail tasks={tasks} activeTaskId={taskId} onNew={newTask} onOpen={(id) => { setNavigatingToTask(id); router.push(`/quill/t/${id}`); }} />}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {!sessionId && !taskId ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-12">
-          <div className="w-full max-w-2xl">
-            <PageHeader
-              variant="hero"
-              centered
-              icon="sparkle"
-              eyebrow="通用智能体"
-              title={<>把想做的事<span className="text-accent">交给它</span>。</>}
-              description="从一句自然语言开始。Agent 会理解目标、拆解步骤、调用工具，并把可预览、可下载的成果交付给你。"
-            />
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f7f3] px-4 py-5 sm:px-7 sm:py-7 lg:px-10">
+          <div className="mx-auto flex w-full max-w-5xl flex-col pb-10 pt-2 sm:pt-5">
+            <div className="mb-14 flex items-center justify-between border-b border-line pb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-3 sm:mb-20">
+              <span className="flex items-center gap-2 text-ink"><span className="grid size-6 place-items-center rounded-md bg-ink text-[10px] text-paper">q</span> Quill</span>
+              <span>新建任务</span>
+            </div>
+            <section className="max-w-3xl">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#176b62]">你的业务工作台</p>
+              <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-[1.06] tracking-[-0.045em] text-ink sm:text-5xl lg:text-6xl">把一个业务目标，<br className="hidden sm:block" />变成<span className="text-[#176b62]">可交付的成果</span>。</h1>
+              <p className="mt-6 max-w-xl text-base leading-7 text-ink-2 sm:text-lg">从一段任务简报或一份资料开始。Quill 会研究、制作、核查，并把清晰的结论与成果交到你手上。</p>
+            </section>
           <form
-            className="w-full max-w-3xl rounded-2xl border border-line bg-surface p-4 shadow-sm"
+            className="mt-10 w-full max-w-4xl rounded-2xl border border-[#d8dedb] bg-surface p-4 shadow-[0_16px_45px_rgba(26,59,53,0.08)] sm:p-5"
             onSubmit={(event: FormEvent) => { event.preventDefault(); void send(); }}
           >
+            <div className="mb-3 flex items-center justify-between px-1 text-xs font-medium text-ink-2"><label htmlFor="task-brief">描述你希望达成的结果</label><span className="hidden text-ink-3 sm:inline">Enter 发送 · Shift + Enter 换行</span></div>
             <Textarea
+              id="task-brief"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={researchMode ? "例如：比较 AI Agent 平台的产品能力和商业模式" : "例如：读取 sales.csv，生成一个可预览的销售数据看板"}
-              rows={4}
-              className="w-full resize-none border-0 bg-transparent px-1 py-1 text-[15px] leading-relaxed"
+              placeholder={researchMode ? "例如：调研目标行业、竞品和客户需求，给出有来源依据的市场机会与建议" : "例如：分析这份经营数据，找出增长机会并制作一页管理层汇报"}
+              rows={3}
+              className="w-full resize-none border-0 bg-transparent px-1 py-2 text-[15px] leading-relaxed sm:text-base"
             />
             <FileAttachments files={selectedFiles} onRemove={(index) => setSelectedFiles((current) => current.filter((_, item) => item !== index))} />
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
               <FilePicker onFiles={(files) => setSelectedFiles((current) => [...current, ...files].slice(0, 10))} />
               <button
                 type="button"
@@ -743,7 +745,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
                 className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-2 transition-colors hover:bg-surface-2"
               >
                 <Icon name="search" size={12} />
-                {researchMode ? "广泛研究模式" : "普通任务模式"}
+                {researchMode ? "研究模式" : "执行任务"}
               </button>
               {researchMode && <span className="hidden text-xs text-ink-3 sm:inline">将并行核验多个研究视角</span>}
               <span className="ml-auto hidden min-w-0 truncate text-xs text-ink-3 sm:inline">
@@ -753,27 +755,30 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
                 type="submit"
                 disabled={!prompt.trim() || sending || uploading || !selectedWorkspace}
                 aria-label={sending || uploading ? "准备中" : "开始任务"}
-                title={sending || uploading ? "准备中" : "开始任务（⌘/⌃ + Enter）"}
-                className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity hover:opacity-85 disabled:opacity-35"
+                title={sending || uploading ? "准备中" : "开始处理"}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-ink px-3 text-xs font-medium text-paper transition-opacity hover:opacity-85 disabled:opacity-35"
               >
                 <Icon name="arrow-up" size={16} />
+                <span className="hidden sm:inline">开始处理</span>
               </button>
             </div>
           </form>
-          <div className="grid w-full max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-9 flex max-w-4xl items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-3">从一个常见任务开始</p><h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink">今天，要推进什么？</h2></div><span className="hidden text-sm text-ink-3 sm:block">选择后可继续编辑任务简报</span></div>
+          <div className="mt-4 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {([
-              { icon: "activity", title: "生成数据看板", prompt: "读取 sales.csv，生成一个可预览的销售数据看板，并检查桌面和移动端布局", research: false },
-              { icon: "file-text", title: "整理一份报告", prompt: "分析当前资料，整理成一份带结论和行动建议的报告", research: false },
-              { icon: "edit", title: "检查代码问题", prompt: "检查当前项目中的代码，找出最需要优先修复的问题", research: false },
-              { icon: "search", title: "广泛研究", prompt: "比较主流 AI Agent 平台的能力、交互和商业模式，并给出可执行结论", research: true },
+              { icon: "activity", title: "分析经营数据", detail: "趋势、异常与增长机会", prompt: "分析上传的经营数据，找出关键趋势、异常和增长机会，并给出优先行动建议。", research: false },
+              { icon: "file-text", title: "制作汇报材料", detail: "结论、依据与行动建议", prompt: "根据现有资料，整理为一份包含结论、数据依据和行动建议的管理层汇报。", research: false },
+              { icon: "edit", title: "整理客户洞察", detail: "需求、问题与优先级", prompt: "阅读客户反馈、访谈或工单资料，归纳客户需求、问题与优先级，并形成洞察摘要。", research: false },
+              { icon: "search", title: "调研市场机会", detail: "行业、竞品与机会判断", prompt: "调研目标行业、竞品和用户需求，给出有来源依据的市场机会与建议。", research: true },
             ] as const).map((example) => (
-              <Card key={example.title} padding="sm" variant="interactive" className="cursor-pointer">
-                <button type="button" className="flex w-full flex-col items-start gap-2 text-left" onClick={() => { setPrompt(example.prompt); setResearchMode(example.research); }}>
-                  <span className="grid size-8 place-items-center rounded-sm border border-line bg-surface text-ink-2"><Icon name={example.icon} size={15} /></span>
-                  <strong className="text-sm font-medium text-ink">{example.title}</strong>
-                </button>
-              </Card>
+              <button key={example.title} type="button" className="group min-h-36 rounded-xl border border-[#dfe4e1] bg-surface p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#8bad9f] hover:shadow-[0_12px_28px_rgba(26,59,53,0.08)]" onClick={() => { setPrompt(example.prompt); setResearchMode(example.research); }}>
+                <span className="grid size-8 place-items-center rounded-md bg-[#e7f1ec] text-[#176b62]"><Icon name={example.icon} size={15} /></span>
+                <strong className="mt-6 block text-sm font-semibold text-ink">{example.title}</strong>
+                <span className="mt-1 block text-xs leading-5 text-ink-3">{example.detail}</span>
+              </button>
             ))}
+          </div>
+          <div className="mt-10 flex max-w-4xl flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#d8dedb] pt-5 text-xs text-ink-3"><span className="font-medium text-ink-2">从问题到交付</span><span>研究与分析</span><span>文档与汇报</span><span>数据与图表</span><span>可下载成果</span></div>
           </div>
         </div>
       ) : (
