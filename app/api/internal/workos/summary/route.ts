@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerEnvironment } from "@/config/env";
 import { connectMongo } from "@/lib/database/mongodb";
 import { TaskModel } from "@/models/task";
+import { RunModel } from "@/models/run";
 import { WorkspaceModel } from "@/models/workspace";
 
 export const runtime = "nodejs";
@@ -58,16 +59,28 @@ export async function GET(request: NextRequest) {
       .select({ workspaceId: 1, name: 1, description: 1, knowledgeBase: 1, updatedAt: 1 })
       .lean(),
   ]);
+  const taskIds = tasks.map((task) => task.taskId);
+  const runs = taskIds.length
+    ? await RunModel.find({ taskId: { $in: taskIds } }).sort({ createdAt: -1 }).select({ taskId: 1, status: 1, createdAt: 1 }).lean()
+    : [];
+  const latestRun = new Map<string, (typeof runs)[number]>();
+  for (const run of runs) if (!latestRun.has(run.taskId)) latestRun.set(run.taskId, run);
 
   return NextResponse.json(
     {
-      tasks: tasks.map((task) => ({
-        taskId: task.taskId,
-        title: task.title,
-        status: task.status,
-        workspaceId: task.workspaceId,
-        updatedAt: task.updatedAt instanceof Date ? task.updatedAt.toISOString() : String(task.updatedAt),
-      })),
+      tasks: tasks.map((task) => {
+        const run = latestRun.get(task.taskId);
+        const attention = run?.status === "waiting_approval" ? "需要授权后才能继续" : run?.status === "waiting_input" ? "需要补充输入后才能继续" : null;
+        return {
+          taskId: task.taskId,
+          title: task.title,
+          status: task.status,
+          workspaceId: task.workspaceId,
+          updatedAt: task.updatedAt instanceof Date ? task.updatedAt.toISOString() : String(task.updatedAt),
+          runStatus: run?.status ?? null,
+          attention,
+        };
+      }),
       workspaces: workspaces.map((workspace) => ({
         workspaceId: workspace.workspaceId,
         name: workspace.name,
