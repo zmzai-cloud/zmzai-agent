@@ -4,15 +4,15 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { apiError, unauthenticated } from "@/lib/api-error";
 import { getWorkspace } from "@/lib/workspaces";
-import { addGithubWorkspaceSkill, listWorkspaceSkills } from "@/lib/workspace-skills";
+import { reviewedGithubSkill } from "@/lib/github-skill-discovery";
+import { addImportedGithubWorkspaceSkill, listWorkspaceSkills } from "@/lib/workspace-skills";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const importSchema = z.object({
-  repository: z.string().trim().min(3).max(256),
-  ref: z.string().trim().min(1).max(256).default("main"),
-  path: z.string().trim().min(1).max(512),
+  reviewToken: z.string().trim().min(20).max(8 * 1024),
+  markdown: z.string().min(1).max(256 * 1024),
 }).strict();
 
 async function workspaceIdentity(context: { params: Promise<{ workspaceId: string }> }) {
@@ -33,9 +33,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ wo
   const auth = await workspaceIdentity(context);
   if ("error" in auth) return auth.error;
   const parsed = importSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return apiError("INVALID_BODY", 400, "GitHub Skill 请求格式不正确");
+  if (!parsed.success) return apiError("INVALID_BODY", 400, "请先预览 Skill，再导入固定版本");
   try {
-    const result = await addGithubWorkspaceSkill({ userId: auth.user.id, workspaceId: auth.workspaceId, ...parsed.data });
+    const imported = reviewedGithubSkill({ userId: auth.user.id, workspaceId: auth.workspaceId, ...parsed.data });
+    const result = await addImportedGithubWorkspaceSkill({ userId: auth.user.id, workspaceId: auth.workspaceId, imported });
     return NextResponse.json(result, { status: result.reused ? 200 : 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
     return apiError("GITHUB_SKILL_IMPORT_FAILED", 422, error instanceof Error ? error.message : "GitHub Skill 导入失败");

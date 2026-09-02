@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { importGithubSkill } from "@/lib/github-skills";
+import { type ImportedGithubSkill, importGithubSkill } from "@/lib/github-skills";
 import { WorkspaceModel } from "@/models/workspace";
 import { WorkspaceSkillModel } from "@/models/workspace-skill";
 
@@ -49,6 +49,13 @@ export async function workspaceOwnsSkillIds(input: { userId: string; workspaceId
 
 export async function addGithubWorkspaceSkill(input: { userId: string; workspaceId: string; repository: string; ref?: string; path: string }): Promise<{ skill: WorkspaceSkillSummary; reused: boolean }> {
   const imported = await importGithubSkill(input);
+  return addImportedGithubWorkspaceSkill({ userId: input.userId, workspaceId: input.workspaceId, imported });
+}
+
+/** Persist an already reviewed immutable GitHub revision.  Discovery preview
+ * verifies the immutable source; this function deliberately never fetches. */
+export async function addImportedGithubWorkspaceSkill(input: { userId: string; workspaceId: string; imported: ImportedGithubSkill }): Promise<{ skill: WorkspaceSkillSummary; reused: boolean }> {
+  const { imported } = input;
   const existing = await WorkspaceSkillModel.findOne({ workspaceId: input.workspaceId, repository: imported.repository, commitSha: imported.commitSha, path: imported.path }).lean();
   if (existing) return { skill: summary(existing), reused: true };
   const skill = await WorkspaceSkillModel.create({ skillId: `skl_${randomUUID()}`, userId: input.userId, workspaceId: input.workspaceId, ...imported });
