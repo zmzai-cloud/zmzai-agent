@@ -719,18 +719,18 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {!sessionId && !taskId ? (
         <div className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 sm:px-7 sm:py-7 lg:px-10">
-          <div className="mx-auto flex w-full max-w-5xl flex-col pb-10 pt-2 sm:pt-5">
-            <div className="mb-14 flex items-center justify-between border-b border-line pb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-3 sm:mb-20">
+          <div className="mx-auto flex w-full max-w-5xl flex-col pb-10 pt-2 sm:pt-4">
+            <div className="mb-8 flex items-center justify-between border-b border-line pb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-3">
               <span className="flex items-center gap-2 text-ink"><span className="grid size-6 place-items-center rounded-md bg-ink text-[10px] text-paper">q</span> Quill</span>
               <span>新建任务</span>
             </div>
-            <section className="max-w-3xl">
-              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-ink-2">你的业务工作台</p>
-              <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-[1.06] tracking-[-0.045em] text-ink sm:text-5xl lg:text-6xl">把一个业务目标，<br className="hidden sm:block" />变成<span className="text-accent">可交付的成果</span>。</h1>
-              <p className="mt-6 max-w-xl text-base leading-7 text-ink-2 sm:text-lg">从一段任务简报或一份资料开始。Quill 会研究、制作、核查，并把清晰的结论与成果交到你手上。</p>
+            <section className="max-w-4xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-3">工作台</p>
+              <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink">新建任务</h1>
+              <p className="mt-2 text-sm text-ink-2">描述目标，附上必要资料；Quill 会将任务推进为可交付的成果。</p>
             </section>
           <form
-            className="mt-10 w-full max-w-4xl rounded-md border border-line bg-surface p-4 shadow-sm sm:p-5"
+            className="mt-5 w-full max-w-4xl rounded-md border border-line bg-surface p-4 shadow-sm sm:p-5"
             onSubmit={(event: FormEvent) => { event.preventDefault(); void send(); }}
           >
             <div className="mb-3 flex items-center justify-between px-1 text-xs font-medium text-ink-2"><label htmlFor="task-brief">描述你希望达成的结果</label><span className="hidden text-ink-3 sm:inline">Enter 发送 · Shift + Enter 换行</span></div>
@@ -770,7 +770,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
               </button>
             </div>
           </form>
-          <div className="mt-9 flex max-w-4xl items-end justify-between gap-4 border-t-2 border-rule pt-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-3">从一个常见任务开始</p><h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink">今天，要推进什么？</h2></div><span className="hidden text-sm text-ink-3 sm:block">选择后可继续编辑任务简报</span></div>
+          <div className="mt-8 flex max-w-4xl items-end justify-between gap-4 border-t-2 border-rule pt-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-3">常见任务</p><h2 className="mt-1 font-serif text-xl font-semibold tracking-tight text-ink">从一个任务开始</h2></div><span className="hidden text-sm text-ink-3 sm:block">选择后可继续编辑任务简报</span></div>
           <div className="mt-4 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[featuredStarter, ...secondaryStarters].map((example, index) => (
               <Card key={example.title} variant="interactive" padding="none" animatedHover className={index === 0 ? "border-t-2 border-t-rule" : undefined}>
