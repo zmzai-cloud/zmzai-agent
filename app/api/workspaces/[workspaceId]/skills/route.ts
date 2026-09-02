@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { apiError, unauthenticated } from "@/lib/api-error";
-import { getWorkspace } from "@/lib/workspaces";
+import { getWorkspace, updateWorkspace } from "@/lib/workspaces";
 import { reviewedGithubSkill } from "@/lib/github-skill-discovery";
 import { addImportedGithubWorkspaceSkill, listWorkspaceSkills } from "@/lib/workspace-skills";
 
@@ -19,8 +19,9 @@ async function workspaceIdentity(context: { params: Promise<{ workspaceId: strin
   const user = await getCurrentUser();
   if (!user) return { error: unauthenticated() } as const;
   const { workspaceId } = await context.params;
-  if (!(await getWorkspace(user.id, workspaceId))) return { error: apiError("WORKSPACE_NOT_FOUND", 404, "Workspace 不存在或无权访问") } as const;
-  return { user, workspaceId } as const;
+  const workspace = await getWorkspace(user.id, workspaceId);
+  if (!workspace) return { error: apiError("WORKSPACE_NOT_FOUND", 404, "Workspace 不存在或无权访问") } as const;
+  return { user, workspaceId, workspace } as const;
 }
 
 export async function GET(_: NextRequest, context: { params: Promise<{ workspaceId: string }> }) {
@@ -37,7 +38,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ wo
   try {
     const imported = reviewedGithubSkill({ userId: auth.user.id, workspaceId: auth.workspaceId, ...parsed.data });
     const result = await addImportedGithubWorkspaceSkill({ userId: auth.user.id, workspaceId: auth.workspaceId, imported });
-    return NextResponse.json(result, { status: result.reused ? 200 : 201, headers: { "cache-control": "no-store" } });
+    if (!auth.workspace.skillIds.includes(result.skill.id)) {
+      await updateWorkspace(auth.user.id, auth.workspaceId, { skillIds: [...auth.workspace.skillIds, result.skill.id] });
+    }
+    return NextResponse.json({ ...result, enabled: true }, { status: result.reused ? 200 : 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
     return apiError("GITHUB_SKILL_IMPORT_FAILED", 422, error instanceof Error ? error.message : "GitHub Skill 导入失败");
   }
