@@ -116,8 +116,8 @@ function FileAttachments({ files, onRemove }: { files: File[]; onRemove: (index:
   })}</div>;
 }
 
-function FilePicker({ onFiles }: { onFiles: (files: File[]) => void }) {
-  return <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-ink-2 hover:bg-surface-2" title="添加文件或图片"><Icon name="plus" size={12} />添加文件<input type="file" multiple accept=".txt,.md,.csv,.json,.ts,.tsx,.js,.jsx,.css,.html,.xml,.yaml,.yml,.png,.jpg,.jpeg,.gif,.webp,.svg" className="sr-only" onChange={(event) => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ""; }} /></label>;
+function FilePicker({ onFiles, label = "添加文件" }: { onFiles: (files: File[]) => void; label?: string }) {
+  return <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-ink-2 hover:bg-surface-2" title="添加文件或图片"><Icon name="plus" size={12} />{label}<input type="file" multiple accept=".txt,.md,.csv,.json,.ts,.tsx,.js,.jsx,.css,.html,.xml,.yaml,.yml,.png,.jpg,.jpeg,.gif,.webp,.svg" className="sr-only" onChange={(event) => { onFiles(Array.from(event.target.files ?? [])); event.target.value = ""; }} /></label>;
 }
 
 function CardHead({ icon, title, sub, right }: { icon: Parameters<typeof Icon>[0]["name"]; title: string; sub?: string; right?: React.ReactNode }) {
@@ -738,7 +738,7 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
             />
             <FileAttachments files={selectedFiles} onRemove={(index) => setSelectedFiles((current) => current.filter((_, item) => item !== index))} />
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-              <FilePicker onFiles={(files) => setSelectedFiles((current) => [...current, ...files].slice(0, 10))} />
+              <FilePicker label="添加资料" onFiles={(files) => setSelectedFiles((current) => [...current, ...files].slice(0, 10))} />
               <button
                 type="button"
                 onClick={() => setResearchMode((current) => !current)}
