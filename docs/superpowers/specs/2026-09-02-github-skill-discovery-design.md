@@ -10,14 +10,17 @@ content.
 ## User flow
 
 1. The Skills page adds a **Discover from GitHub** panel.  A user selects a
-   workspace, then either chooses an official source or supplies a GitHub
+   concrete workspace (separate from the existing all-workspaces list filter),
+   then either chooses an official source or supplies a public GitHub
    repository/ref/Skill directory.
 2. The app resolves the ref to a commit SHA and loads only that directory's
    `SKILL.md`.  It displays name, description, origin, pinned SHA, and the full
    instruction body before the import button becomes available.
-3. The user explicitly imports the reviewed revision.  Existing workspace skill
-   storage records the repository, requested ref, directory, and resolved SHA.
-   Future refresh remains an explicit action.
+3. Preview returns a short-lived, user/workspace-bound review token containing
+   the normalized coordinates, resolved SHA, and a body digest.  The user
+   explicitly imports that token.  Existing workspace skill storage records the
+   repository, requested ref, directory, and resolved SHA.  Future refresh
+   remains an explicit action.
 
 ## Discovery scope
 
@@ -35,6 +38,11 @@ Search API requires authentication, so it should be added only through the
 existing GitHub connector with a clearly disclosed permission and rate-limit
 policy.  Anonymous broad code search is never attempted.
 
+V1 imports public GitHub repositories only.  Private repositories and
+authenticated search are deferred until the existing GitHub connector is used
+for both discovery and content retrieval, so an OAuth token is never accepted
+from a browser request or accidentally sent to a different origin.
+
 ## Security and data rules
 
 * The server validates `owner/repo`, ref, and path, and constructs every GitHub
@@ -42,10 +50,12 @@ policy.  Anonymous broad code search is never attempted.
 * Preview and import resolve a named ref to a full commit SHA.  Import saves the
   resolved SHA, never a moving branch as the effective revision.
 * Preview has a 256 KiB `SKILL.md` cap and is read-only; it does not create a
-  workspace record.
+  workspace record.  GitHub response body reads are also byte-bounded before
+  JSON/base64 decoding, with timeouts and no redirects.
 * The UI labels non-catalog input as third-party content and warns that Skill
   instructions may request tool use or file changes.  Preview is required in
-  this UI before importing.
+  this UI and by the import API: a signed short-lived token is bound to the
+  user, workspace, normalized coordinates, resolved SHA, and content digest.
 * Catalog ownership is an application deployment decision.  Adding a source is
   a code review change, not a user-entered marketplace URL.
 
@@ -58,9 +68,12 @@ policy.  Anonymous broad code search is never attempted.
   whole catalog.
 * `POST /api/workspaces/:workspaceId/skill-discovery/preview` accepts the same
   coordinates as the existing import endpoint and returns a transient reviewed
-  Skill payload.  It is authenticated and workspace-authorized.
-* The existing `POST /skills` endpoint remains the single write path, so its
-  immutable provenance semantics do not fork.
+  Skill payload plus a short-lived review token.  It is authenticated and
+  workspace-authorized.
+* `POST /skills` accepts that review token instead of mutable GitHub
+  coordinates.  It verifies token binding and expiry, then persists exactly the
+  reviewed SHA/body.  This remains the single write path, so immutable
+  provenance semantics do not fork.
 * The Skills page owns selection, preview, warning, and import state.  The
   catalog cards and direct-coordinate form converge on the same preview/import
   actions.
@@ -76,8 +89,9 @@ policy.  Anonymous broad code search is never attempted.
 
 * A user can browse trusted catalog entries, preview a Skill, and import it
   into one selected workspace.
-* A user can enter valid GitHub coordinates and must preview the exact pinned
-  body before import is enabled.
+* A user can enter valid public GitHub coordinates and must preview the exact
+  pinned body before import is enabled; the server rejects a direct or expired
+  import and persists the token's reviewed SHA/body only.
 * Imported records retain the existing immutable SHA and explicit refresh flow.
 * Invalid paths, non-SKILL files, GitHub errors, and unauthorised workspaces
   return safe errors without external-host fetches.
