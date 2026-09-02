@@ -719,18 +719,18 @@ export function TaskWorkbench({ taskId: routeTaskId, sessionId: routeSessionId }
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {!sessionId && !taskId ? (
         <div className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 sm:px-7 sm:py-7 lg:px-10">
-          <div className="mx-auto flex w-full max-w-5xl flex-col pb-10 pt-2 sm:pt-4">
-            <div className="mb-8 flex items-center justify-between border-b border-line pb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-3">
+          <div className="mx-auto flex w-full max-w-5xl flex-col pb-10 pt-3 sm:pt-6">
+            <div className="mb-11 flex items-center justify-between border-b border-line pb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-3 sm:mb-14">
               <span className="flex items-center gap-2 text-ink"><span className="grid size-6 place-items-center rounded-md bg-ink text-[10px] text-paper">q</span> Quill</span>
               <span>新建任务</span>
             </div>
-            <section className="max-w-4xl">
+            <section className="max-w-3xl">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-3">工作台</p>
-              <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink">新建任务</h1>
-              <p className="mt-2 text-sm text-ink-2">描述目标，附上必要资料；Quill 会将任务推进为可交付的成果。</p>
+              <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">把任务交给 Quill</h1>
+              <p className="mt-3 text-sm leading-6 text-ink-2 sm:text-base">描述目标并附上必要资料，即可开始处理。</p>
             </section>
           <form
-            className="mt-5 w-full max-w-4xl rounded-md border border-line bg-surface p-4 shadow-sm sm:p-5"
+            className="mt-7 w-full max-w-4xl rounded-md border border-line bg-surface p-4 shadow-sm sm:mt-8 sm:p-5"
             onSubmit={(event: FormEvent) => { event.preventDefault(); void send(); }}
           >
             <div className="mb-3 flex items-center justify-between px-1 text-xs font-medium text-ink-2"><label htmlFor="task-brief">描述你希望达成的结果</label><span className="hidden text-ink-3 sm:inline">Enter 发送 · Shift + Enter 换行</span></div>
