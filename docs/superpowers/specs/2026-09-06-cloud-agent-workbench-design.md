@@ -78,6 +78,8 @@ The existing Agent boundaries remain authoritative: Agent owns identity, authori
 
 Run states are:
 
+`created`, `running`, `waiting_input`, `waiting_approval`, `paused`, `succeeded`, `failed`, `cancelled`
+
 Legal transitions are:
 
 `created -> running -> waiting_input | waiting_approval | paused | succeeded | failed | cancelled`
@@ -115,3 +117,5 @@ Artifact sharing creates a random, revocable token scoped to one Artifact versio
 5. Validate the end-to-end developer workflow and harden authorization and idempotency.
 
 GitHub OAuth tokens are encrypted at rest and scoped to the selected repository permissions. Sandbox checkpoints have a per-Workspace retention limit and are garbage-collected after the configured retention window. Agent stores only Artifact metadata and opaque storage keys; download URLs are generated on demand.
+
+Event sequence allocation uses an atomic per-Run database increment in the same transaction that appends the event. Encryption keys are managed outside application data, support active/previous key rotation, and include a key version on every encrypted token.
