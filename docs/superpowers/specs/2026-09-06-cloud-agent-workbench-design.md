@@ -78,13 +78,21 @@ The existing Agent boundaries remain authoritative: Agent owns identity, authori
 
 Run states are:
 
-`created -> running -> waiting_input | waiting_approval -> paused -> running -> succeeded | failed | cancelled`
+Legal transitions are:
 
-The implementation must preserve terminal state and event ordering. A disconnected browser does not stop a Run. Reconnection uses an event cursor to replay missed events. Sandbox restart recovery uses the latest checkpoint; unrecoverable runs become `failed` while retaining their logs. Approval expiry blocks continuation and allows a fresh request. Run retries must not repeat already-confirmed tool calls.
+`created -> running -> waiting_input | waiting_approval | paused | succeeded | failed | cancelled`
+
+`waiting_input -> running | paused | cancelled`; `waiting_approval -> running | paused | cancelled`; `paused -> running | cancelled`. `succeeded`, `failed`, and `cancelled` are terminal. User input or approval resumes the same Run and creates a new attempt record; starting a new Session creates a new Run.
+
+The implementation must preserve terminal state and event ordering. Each Run has a monotonically increasing integer `seq`; the SSE cursor is `{runId, seq}` and replay is strictly ordered per Run. Events are persisted before publication and clients deduplicate by `(runId, seq)`. A disconnected browser does not stop a Run. Sandbox restart recovery uses the latest checkpoint identified by `checkpointId`; unrecoverable runs become `failed` while retaining their logs. Each tool call has a stable `toolCallId` and idempotency key; retries reuse it and the Agent records completion before acknowledging the next step, so an already-confirmed call is never executed twice. Approval expiry blocks continuation and allows a fresh request.
 
 ## 7. File and artifact consistency
 
 Every save carries the client revision. Agent rejects stale writes with the current version and a Diff so the user can keep, overwrite, or merge intentionally. Artifact packaging may fail independently of execution; the Run log remains available and packaging can be retried.
+
+Approval covers shell commands, network-capable connector calls, writes outside the approved project scope, and destructive or git-publishing actions. The request includes the exact action, target, reason, and expiry (default 15 minutes). Users can approve once, approve for the current Run, reject, or revoke a pending approval; rejection and revocation cancel the blocked action without cancelling the whole Run.
+
+Artifact sharing creates a random, revocable token scoped to one Artifact version. Links are read-only, expire after 7 days by default, and are invalidated immediately on revoke. Artifact bytes remain behind the authenticated Agent endpoint; the token endpoint performs access checks and never exposes storage credentials.
 
 ## 8. Acceptance criteria
 
@@ -106,3 +114,4 @@ Every save carries the client revision. Agent rejects stale writes with the curr
 4. Add reconnect, recovery, revision conflict, and approval UX.
 5. Validate the end-to-end developer workflow and harden authorization and idempotency.
 
+GitHub OAuth tokens are encrypted at rest and scoped to the selected repository permissions. Sandbox checkpoints have a per-Workspace retention limit and are garbage-collected after the configured retention window. Agent stores only Artifact metadata and opaque storage keys; download URLs are generated on demand.
