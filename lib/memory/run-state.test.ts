@@ -9,16 +9,16 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/models/memory-run-state", () => ({
   MemoryRunStateModel: {
     findOne: vi.fn((query: { runId: string }) => ({ lean: async () => mocks.states.get(query.runId) ?? null })),
-    findOneAndUpdate: vi.fn((query: { runId: string; "retention.status"?: string; "retention.updatedAt"?: { $lte: Date } }, update: { $setOnInsert?: Record<string, unknown>; $set: Record<string, unknown> }) => {
+    findOneAndUpdate: vi.fn((query: { runId: string; "retention.status"?: string; "retention.updatedAt"?: { $lte: Date } }, update: { $setOnInsert?: Record<string, unknown>; $set?: Record<string, unknown> }) => {
       const existing = mocks.states.get(query.runId);
-      if (query["retention.status"] && (!existing || (existing.retention as { status: string; updatedAt: Date }).status !== query["retention.status"] || (existing.retention as { updatedAt: Date }).updatedAt > query["retention.updatedAt"]!.$lte)) return { lean: async () => null };
+      if (query["retention.status"] && (!existing || (existing.retention as { status: string; updatedAt: Date }).status !== query["retention.status"] || (query["retention.updatedAt"] && (existing.retention as { updatedAt: Date }).updatedAt > query["retention.updatedAt"].$lte))) return { lean: async () => null };
       const current = mocks.states.get(query.runId) ?? {
         ...update.$setOnInsert,
         recall: { status: "pending", hits: [], observedAt: null },
         retention: { status: "not_started", updatedAt: null },
       };
       const next = structuredClone(current);
-      for (const [path, value] of Object.entries(update.$set)) {
+      for (const [path, value] of Object.entries(update.$set ?? {})) {
         const [group, field] = path.split(".");
         (next[group] as Record<string, unknown>)[field] = value;
       }
@@ -43,7 +43,7 @@ vi.mock("@zmzai/agent-framework", async (importOriginal) => {
 });
 
 import { recordMemoryEvent } from "@/lib/memory/events";
-import { readMemoryRunState, settleStaleRetention } from "@/lib/memory/run-state";
+import { compareAndSetRetention, readMemoryRunState, settleStaleRetention } from "@/lib/memory/run-state";
 
 beforeEach(() => {
   mocks.states.clear();
@@ -100,5 +100,21 @@ describe("memory Run receipts", () => {
     expect(first.retention.status).toBe("unknown");
     expect(second.retention.status).toBe("unknown");
     expect(mocks.createEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a terminal update after stale pending becomes unknown", async () => {
+    mocks.states.set("run_race", { runId: "run_race", sessionId: "ses_1", bankId: "ws_1", recall: { status: "pending", hits: [], observedAt: null }, retention: { status: "pending", updatedAt: new Date("2026-10-08T10:00:00Z") } });
+    await settleStaleRetention("run_race", new Date("2026-10-08T10:00:11Z"));
+    const late = await compareAndSetRetention({ runId: "run_race", sessionId: "ses_1", bankId: "ws_1", from: "pending", to: "succeeded", at: new Date("2026-10-08T10:00:12Z") });
+    expect(late).toBeNull();
+    expect((await readMemoryRunState("run_race"))?.retention.status).toBe("unknown");
+  });
+
+  it("uses persisted not_started state to reject duplicate retention after restart", async () => {
+    const identity = { runId: "run_once", sessionId: "ses_1", bankId: "ws_1" };
+    expect((await compareAndSetRetention({ ...identity, from: "not_started", to: "pending", at: new Date("2026-10-08T10:00:00Z") }))?.retention.status).toBe("pending");
+    expect((await compareAndSetRetention({ ...identity, from: "pending", to: "unknown", at: new Date("2026-10-08T10:00:05Z") }))?.retention.status).toBe("unknown");
+    expect(await compareAndSetRetention({ ...identity, from: "not_started", to: "pending", at: new Date("2026-10-08T10:00:20Z") })).toBeNull();
+    expect((await readMemoryRunState("run_once"))?.retention.status).toBe("unknown");
   });
 });

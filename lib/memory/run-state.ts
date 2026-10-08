@@ -46,6 +46,32 @@ export async function readMemoryRunState(runId: string): Promise<MemoryRunState 
   return record ? toState(record) : null;
 }
 
+export async function compareAndSetRetention(input: {
+  runId: string;
+  sessionId: string;
+  bankId: string;
+  from: MemoryRunState["retention"]["status"];
+  to: MemoryRunState["retention"]["status"];
+  at: Date;
+}): Promise<MemoryRunState | null> {
+  const { runId, sessionId, bankId, from, to, at } = input;
+  if (from === "not_started") {
+    // Create the receipt only once. A terminal receipt must never be reset by
+    // a duplicate hook, including after a process restart.
+    await MemoryRunStateModel.findOneAndUpdate(
+      { runId },
+      { $setOnInsert: { runId, sessionId, bankId } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    ).lean();
+  }
+  const changed = await MemoryRunStateModel.findOneAndUpdate(
+    { runId, sessionId, bankId, "retention.status": from },
+    { $set: { "retention.status": to, "retention.updatedAt": at } },
+    { new: true },
+  ).lean();
+  return changed ? toState(changed) : null;
+}
+
 /** Reconcile a receipt left pending by a crash or an interrupted retain request. */
 export async function settleStaleRetention(runId: string, now: Date): Promise<MemoryRunState> {
   const cutoff = new Date(now.getTime() - 10_000);

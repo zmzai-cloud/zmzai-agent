@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { notifyEventLogListeners } from "@zmzai/agent-framework";
 import { appendMemoryEventToMongo } from "@/framework/core/events/mongo-event-log";
-import { writeMemoryRunState, type MemoryHitPreview, type MemoryRunState } from "@/lib/memory/run-state";
+import { compareAndSetRetention, writeMemoryRunState, type MemoryHitPreview, type MemoryRunState } from "@/lib/memory/run-state";
 
 const hitSchema = z.strictObject({ memoryId: z.string().optional(), text: z.string() });
 const memoryEventSchemas = {
@@ -17,6 +17,28 @@ const memoryEventSchemas = {
 } as const;
 
 export type MemoryEventType = keyof typeof memoryEventSchemas;
+export type RetentionEventType = Extract<MemoryEventType, `memory.retention_${string}`>;
+
+/** Persistence guard for hook transitions. Returns false when another process
+ * already settled this Run, so no duplicate retain or terminal event follows. */
+export async function recordRetentionTransition(input: {
+  runId: string;
+  sessionId: string;
+  bankId: string;
+  type: RetentionEventType;
+  from: MemoryRunState["retention"]["status"];
+}): Promise<boolean> {
+  const status = input.type.slice("memory.retention_".length) as MemoryRunState["retention"]["status"];
+  const state = await compareAndSetRetention({ ...input, to: status, at: new Date() });
+  if (!state) return false;
+  const persisted = await appendMemoryEventToMongo({
+    sessionId: input.sessionId,
+    type: input.type,
+    data: { runId: input.runId, bankId: input.bankId, status, updatedAt: state.retention.updatedAt },
+  });
+  notifyEventLogListeners(persisted);
+  return true;
+}
 
 function boundedHits(hits: z.infer<typeof hitSchema>[]): MemoryHitPreview[] {
   return hits.slice(0, 8).map(({ memoryId, text }) => ({

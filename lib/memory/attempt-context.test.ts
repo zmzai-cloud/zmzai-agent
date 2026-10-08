@@ -4,14 +4,16 @@ import type { SessionInfo } from "@zmzai/agent-framework";
 const mocks = vi.hoisted(() => ({
   ensureRunForFrameworkAttempt: vi.fn(),
   recallMemoryContext: vi.fn(),
-  retain: vi.fn(),
+  retainWithOutcome: vi.fn(),
   recordMemoryEvent: vi.fn(),
+  recordRetentionTransition: vi.fn(),
 }));
 
 vi.mock("@/lib/task-run-control", () => ({ ensureRunForFrameworkAttempt: mocks.ensureRunForFrameworkAttempt }));
 vi.mock("./recall-context", () => ({ recallMemoryContext: mocks.recallMemoryContext }));
-vi.mock("./provider", () => ({ getMemoryProvider: () => ({ retain: mocks.retain }) }));
-vi.mock("./events", () => ({ recordMemoryEvent: mocks.recordMemoryEvent }));
+vi.mock("./provider", () => ({ getMemoryProvider: () => ({ retainWithOutcome: mocks.retainWithOutcome }), isMemoryConfigured: () => true }));
+vi.mock("./events", () => ({ recordMemoryEvent: mocks.recordMemoryEvent, recordRetentionTransition: mocks.recordRetentionTransition }));
+vi.mock("./run-state", () => ({ compareAndSetRetention: vi.fn().mockResolvedValue({ retention: { status: "pending" } }) }));
 
 import { memoryContextForAttempt } from "./attempt-context";
 import { takeMemoryAttempt } from "./attempt-run";
@@ -24,8 +26,9 @@ beforeEach(() => {
   takeMemoryAttempt(session.id);
   clearRetainInFlightForTest();
   mocks.recallMemoryContext.mockResolvedValue("memory context");
-  mocks.retain.mockResolvedValue(undefined);
+  mocks.retainWithOutcome.mockResolvedValue("succeeded");
   mocks.recordMemoryEvent.mockResolvedValue({ seq: 1 });
+  mocks.recordRetentionTransition.mockResolvedValue(true);
 });
 
 describe("memory attempt start", () => {
@@ -41,7 +44,8 @@ describe("memory attempt start", () => {
     await end("first");
     expect(await memoryContextForAttempt(session, "queued follow-up", true)).toBe("memory context");
     await end("queued follow-up");
-    expect(mocks.retain.mock.calls.map(([call]) => JSON.parse(call.context).runId)).toEqual(["run_1", "run_2"]);
+    await vi.waitFor(() => expect(mocks.retainWithOutcome).toHaveBeenCalledTimes(2));
+    expect(mocks.retainWithOutcome.mock.calls.map(([call]) => JSON.parse(call.context).runId)).toEqual(["run_1", "run_2"]);
     expect(takeMemoryAttempt(session.id)).toBeNull();
     expect(mocks.ensureRunForFrameworkAttempt).toHaveBeenCalledTimes(2);
   });
