@@ -29,6 +29,12 @@ vi.mock("@/framework/core/events/mongo-models", () => ({
   FrameworkSeqModel: { findOneAndUpdate: vi.fn(() => ({ lean: async () => ({ seq: ++mocks.seq }) })) },
   FrameworkEventModel: { create: mocks.createEvent },
 }));
+vi.mock("@/lib/database/mongodb", () => ({
+  connectMongo: vi.fn(async () => ({ startSession: async () => ({
+    withTransaction: async (callback: () => Promise<unknown>) => callback(),
+    endSession: async () => {},
+  }) })),
+}));
 vi.mock("@zmzai/agent-framework", async (importOriginal) => {
   const original = await importOriginal<typeof import("@zmzai/agent-framework")>();
   return { ...original, notifyEventLogListeners: vi.fn() };

@@ -12,6 +12,12 @@ vi.mock("@/framework/core/events/mongo-models", () => ({
     findOneAndUpdate: vi.fn(),
   },
 }));
+vi.mock("@/lib/database/mongodb", () => ({
+  connectMongo: vi.fn(async () => ({ startSession: async () => ({
+    withTransaction: async (callback: () => Promise<unknown>) => callback(),
+    endSession: async () => {},
+  }) })),
+}));
 
 import { FrameworkEventModel, FrameworkSeqModel } from "@/framework/core/events/mongo-models";
 
@@ -53,7 +59,10 @@ describe("publishFrameworkEvent", () => {
     const event = await publishFrameworkEvent({ sessionId: "ses_1", type: "session.status", data: { status: "running" } });
     expect(event.seq).toBe(1);
     expect(event.id).toMatch(/^evt_/);
-    expect(eventModel.create).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "ses_1", seq: 1, type: "session.status" }));
+    expect(eventModel.create).toHaveBeenCalledWith(
+      [expect.objectContaining({ sessionId: "ses_1", seq: 1, type: "session.status" })],
+      expect.objectContaining({ session: expect.anything() }),
+    );
 
     const second = await publishFrameworkEvent({ sessionId: "ses_1", type: "session.status", data: { status: "idle" } });
     expect(second.seq).toBe(2);
