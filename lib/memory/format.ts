@@ -17,26 +17,34 @@ export const MEMORY_CONTEXT_HEADER =
  * 将 recall 命中的事实列表格式化为注入上下文。无有效事实返回 undefined。
  * 总长超出 4k 时截断：放得下的整行保留，放不下的最后一条就地截断（不产生残行），其后丢弃。
  */
-export function formatMemoryContext(facts: readonly string[]): string | undefined {
+export function formatMemoryContextWithFacts(facts: readonly string[]): { context: string | undefined; usedFacts: string[] } {
   const items = facts.map((fact) => fact.trim()).filter((fact) => fact.length > 0);
-  if (!items.length) return undefined;
+  if (!items.length) return { context: undefined, usedFacts: [] };
 
   const lines: string[] = [MEMORY_CONTEXT_HEADER];
+  const usedFacts: string[] = [];
   let total = MEMORY_CONTEXT_HEADER.length;
   for (const fact of items) {
     const line = `- ${fact}`;
     if (total + 1 + line.length <= MEMORY_CONTEXT_MAX_CHARS) {
       lines.push(line);
+      usedFacts.push(fact);
       total += 1 + line.length;
       continue;
     }
     const remaining = MEMORY_CONTEXT_MAX_CHARS - total - 1;
-    if (remaining > 0) {
-      lines.push(line.slice(0, remaining));
+    if (remaining > 2) {
+      const used = fact.slice(0, remaining - 2);
+      lines.push(`- ${used}`);
+      usedFacts.push(used);
     }
     break;
   }
-  return lines.join("\n");
+  return { context: lines.join("\n"), usedFacts };
+}
+
+export function formatMemoryContext(facts: readonly string[]): string | undefined {
+  return formatMemoryContextWithFacts(facts).context;
 }
 
 export type RetainTranscriptMessage = { role: "user" | "assistant"; text: string };

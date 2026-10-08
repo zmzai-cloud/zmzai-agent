@@ -14,6 +14,7 @@
 import { HindsightClient } from "@vectorize-io/hindsight-client";
 
 export type MemoryRecallInput = { bankId: string; query: string; maxFacts?: number };
+export type MemoryRecallHit = { memoryId?: string; text: string; score?: number };
 export type MemoryRetainInput = { bankId: string; content: string; context: string };
 export type MemoryStatus = { available: boolean; factCount: number | null };
 
@@ -22,8 +23,8 @@ export interface MemoryProvider {
   ensureBank(bankId: string): Promise<void>;
   /** 沉淀记忆。失败/超时静默（warn），永不抛出。 */
   retain(input: MemoryRetainInput): Promise<void>;
-  /** 语义召回。返回事实文本列表；不可用/降级返回 null。 */
-  recall(input: MemoryRecallInput): Promise<string[] | null>;
+  /** 语义召回。可达但无结果返回 []；不可用返回 null。 */
+  recall(input: MemoryRecallInput): Promise<MemoryRecallHit[] | null>;
   /** 删除 bank（workspace 删除时 fire-and-forget）。 */
   deleteBank(bankId: string): Promise<void>;
   /** bank 状态与记忆条数（UI 展示用）。 */
@@ -40,7 +41,7 @@ export interface HindsightLike {
     bankId: string,
     query: string,
     options: { maxTokens?: number; signal?: AbortSignal },
-  ): Promise<{ results: Array<{ text: string }> }>;
+  ): Promise<{ results: Array<{ id?: string; text: string; score?: number; scores?: { final: number } | null }> }>;
   deleteBank(bankId: string): Promise<unknown>;
   listMemories(bankId: string, options: { limit: number }): Promise<{ total: number }>;
 }
@@ -51,8 +52,9 @@ export const RETAIN_TIMEOUT_MS = 5_000;
 export const RECALL_MAX_TOKENS = 2_000;
 export const RECALL_DEFAULT_MAX_FACTS = 12;
 
-function warn(operation: string, bankId: string, error: unknown): void {
-  console.warn(`[memory] ${operation} failed for bank ${bankId}:`, error instanceof Error ? error.message : error);
+function warn(operation: string, bankId: string): void {
+  // Client errors can contain request or fact text; logs carry metadata only.
+  console.warn(`[memory] ${operation} failed for bank ${bankId}`);
 }
 
 /**
@@ -75,13 +77,13 @@ async function withTimeout<T>(
   }, timeoutMs);
   try {
     return await Promise.race([
-      run(controller.signal).catch((error: unknown) => {
-        if (!timedOut) warn(operation, bankId, error);
+      run(controller.signal).catch(() => {
+        if (!timedOut) warn(operation, bankId);
         return fallback;
       }),
       new Promise<T>((resolve) =>
         setTimeout(() => {
-          warn(`${operation} timed out after ${timeoutMs}ms`, bankId, undefined);
+          warn(`${operation} timed out after ${timeoutMs}ms`, bankId);
           resolve(fallback);
         }, timeoutMs),
       ),
@@ -146,7 +148,18 @@ export function createHindsightMemoryProvider(deps: {
         null,
       );
       if (!response) return null;
-      return response.results.slice(0, limit).map((result) => result.text.trim()).filter((text) => text.length > 0);
+      return response.results
+        .map((result): MemoryRecallHit => {
+          const text = result.text.trim();
+          const score = result.scores?.final ?? result.score;
+          return {
+            text,
+            ...(typeof result.id === "string" && result.id.length > 0 ? { memoryId: result.id } : {}),
+            ...(typeof score === "number" && Number.isFinite(score) ? { score } : {}),
+          };
+        })
+        .filter((result) => result.text.length > 0)
+        .slice(0, limit);
     },
     deleteBank: (bankId) =>
       withTimeout(
@@ -186,7 +199,7 @@ let cachedProvider: MemoryProvider | undefined;
 export function getMemoryProvider(): MemoryProvider {
   if (cachedProvider) return cachedProvider;
   const apiUrl = process.env.HINDSIGHT_API_URL?.trim();
-  cachedProvider = apiUrl ? createHindsightMemoryProvider({ apiUrl }) : createNoopMemoryProvider();
+  cachedProvider = apiUrl && isMemoryConfigured() ? createHindsightMemoryProvider({ apiUrl }) : createNoopMemoryProvider();
   return cachedProvider;
 }
 

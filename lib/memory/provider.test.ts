@@ -35,15 +35,32 @@ describe("noop memory provider", () => {
 });
 
 describe("hindsight memory provider", () => {
-  it("maps recall results to trimmed fact texts and slices to maxFacts", async () => {
+  it("normalizes structured recall results, preserves supplied IDs and order, and slices to maxFacts", async () => {
     const client = makeClient({
-      recall: vi.fn().mockResolvedValue({ results: Array.from({ length: 20 }, (_, index) => ({ text: `f${index}` })) }),
+      recall: vi.fn().mockResolvedValue({ results: Array.from({ length: 20 }, (_, index) => ({ id: `mem_${index}`, text: ` f${index} `, scores: { final: index / 20 } })) }),
     });
     const provider = createHindsightMemoryProvider({ apiUrl: "http://127.0.0.1:8888", clientFactory: () => client });
     const facts = await provider.recall({ bankId: "ws_x", query: "q" });
     expect(facts).toHaveLength(12);
-    expect(facts![0]).toBe("f0");
-    await expect(provider.recall({ bankId: "ws_x", query: "q", maxFacts: 2 })).resolves.toEqual(["f0", "f1"]);
+    expect(facts![0]).toEqual({ memoryId: "mem_0", text: "f0", score: 0 });
+    await expect(provider.recall({ bankId: "ws_x", query: "q", maxFacts: 2 })).resolves.toEqual([
+      { memoryId: "mem_0", text: "f0", score: 0 },
+      { memoryId: "mem_1", text: "f1", score: 0.05 },
+    ]);
+    expect(client.recall).toHaveBeenCalledWith("ws_x", "q", expect.anything());
+  });
+
+  it("does not invent IDs for hits and preserves an empty reachable response", async () => {
+    const provider = createHindsightMemoryProvider({
+      apiUrl: "http://127.0.0.1:8888",
+      clientFactory: () => makeClient({ recall: vi.fn().mockResolvedValue({ results: [{ text: " fact " }, { text: "  " }] }) }),
+    });
+    await expect(provider.recall({ bankId: "ws_1", query: "q" })).resolves.toEqual([{ text: "fact" }]);
+    const empty = createHindsightMemoryProvider({
+      apiUrl: "http://127.0.0.1:8888",
+      clientFactory: () => makeClient({ recall: vi.fn().mockResolvedValue({ results: [] }) }),
+    });
+    await expect(empty.recall({ bankId: "ws_1", query: "q" })).resolves.toEqual([]);
   });
 
   it("passes context to retain and does not throw when the client rejects", async () => {
@@ -94,7 +111,7 @@ describe("hindsight memory provider", () => {
     await vi.advanceTimersByTimeAsync(RETAIN_TIMEOUT_MS + 100);
     expect(await recallPromise).toBeNull();
     await expect(retainPromise).resolves.toBeUndefined();
-    expect(warnSpy).toHaveBeenCalledWith(`[memory] recall timed out after ${RECALL_TIMEOUT_MS}ms failed for bank ws_x:`, undefined);
+    expect(warnSpy).toHaveBeenCalledWith(`[memory] recall timed out after ${RECALL_TIMEOUT_MS}ms failed for bank ws_x`);
     vi.useRealTimers();
     warnSpy.mockRestore();
   });

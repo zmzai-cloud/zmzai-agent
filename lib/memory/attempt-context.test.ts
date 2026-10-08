@@ -5,11 +5,13 @@ const mocks = vi.hoisted(() => ({
   ensureRunForFrameworkAttempt: vi.fn(),
   recallMemoryContext: vi.fn(),
   retain: vi.fn(),
+  recordMemoryEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/task-run-control", () => ({ ensureRunForFrameworkAttempt: mocks.ensureRunForFrameworkAttempt }));
 vi.mock("./recall-context", () => ({ recallMemoryContext: mocks.recallMemoryContext }));
 vi.mock("./provider", () => ({ getMemoryProvider: () => ({ retain: mocks.retain }) }));
+vi.mock("./events", () => ({ recordMemoryEvent: mocks.recordMemoryEvent }));
 
 import { memoryContextForAttempt } from "./attempt-context";
 import { takeMemoryAttempt } from "./attempt-run";
@@ -23,6 +25,7 @@ beforeEach(() => {
   clearRetainInFlightForTest();
   mocks.recallMemoryContext.mockResolvedValue("memory context");
   mocks.retain.mockResolvedValue(undefined);
+  mocks.recordMemoryEvent.mockResolvedValue({ seq: 1 });
 });
 
 describe("memory attempt start", () => {
@@ -47,5 +50,54 @@ describe("memory attempt start", () => {
     expect(await memoryContextForAttempt(session, "local prompt", false)).toBe("memory context");
     expect(takeMemoryAttempt(session.id)).toBeNull();
     expect(mocks.ensureRunForFrameworkAttempt).not.toHaveBeenCalled();
+  });
+
+  it("uses the bound attempt in the actual recall callback and keeps model context when persistence fails", async () => {
+    mocks.ensureRunForFrameworkAttempt.mockResolvedValue({ runId: "run_exact" });
+    mocks.recordMemoryEvent.mockRejectedValue(new Error("database down"));
+    mocks.recallMemoryContext.mockImplementation(async (_session, _text, _provider, onReceipt) => {
+      await onReceipt({ bankId: "ws_1", status: "hit", hits: [{ memoryId: "mem_1", text: "prefer staging first" }] });
+      return "memory context";
+    });
+    await expect(memoryContextForAttempt(session, "部署偏好", true)).resolves.toBe("memory context");
+    expect(mocks.recordMemoryEvent).toHaveBeenCalledWith({
+      runId: "run_exact", sessionId: "ses_1", bankId: "ws_1",
+      type: "memory.recall_succeeded", payload: { hits: [{ memoryId: "mem_1", text: "prefer staging first" }] },
+    });
+  });
+
+  it("records empty, unavailable, and disabled status for the same bound Run", async () => {
+    mocks.ensureRunForFrameworkAttempt.mockResolvedValue({ runId: "run_exact" });
+    for (const status of ["empty", "unavailable", "disabled"] as const) {
+      mocks.recallMemoryContext.mockImplementationOnce(async (_session, _text, _provider, onReceipt) => {
+        await onReceipt({ bankId: "ws_1", status, hits: [] });
+      });
+      await memoryContextForAttempt(session, "q", true);
+    }
+    expect(mocks.recordMemoryEvent.mock.calls.map(([call]) => call.type)).toEqual([
+      "memory.recall_succeeded", "memory.recall_unavailable", "memory.recall_disabled",
+    ]);
+  });
+
+  it("attributes queued recall receipts to each exact Run", async () => {
+    mocks.ensureRunForFrameworkAttempt
+      .mockResolvedValueOnce({ runId: "run_1" })
+      .mockResolvedValueOnce({ runId: "run_2" });
+    mocks.recallMemoryContext.mockImplementation(async (_session, _text, _provider, onReceipt) => {
+      await onReceipt({ bankId: "ws_1", status: "empty", hits: [] });
+    });
+    await memoryContextForAttempt(session, "first", true);
+    await memoryContextForAttempt(session, "queued", true);
+    expect(mocks.recordMemoryEvent.mock.calls.map(([call]) => call.runId)).toEqual(["run_1", "run_2"]);
+  });
+
+  it("does not wait for receipt persistence before returning model context", async () => {
+    mocks.ensureRunForFrameworkAttempt.mockResolvedValue({ runId: "run_exact" });
+    mocks.recordMemoryEvent.mockImplementation(() => new Promise(() => undefined));
+    mocks.recallMemoryContext.mockImplementation(async (_session, _text, _provider, onReceipt) => {
+      await onReceipt({ bankId: "ws_1", status: "hit", hits: [{ text: "fact" }] });
+      return "memory context";
+    });
+    await expect(memoryContextForAttempt(session, "q", true)).resolves.toBe("memory context");
   });
 });
