@@ -1,4 +1,6 @@
 import { MemoryRunStateModel, type MemoryRunStateRecord } from "@/models/memory-run-state";
+import { notifyEventLogListeners } from "@zmzai/agent-framework";
+import { appendMemoryEventToMongo } from "@/framework/core/events/mongo-event-log";
 
 export type MemoryHitPreview = { memoryId?: string; text: string };
 export type MemoryRunState = {
@@ -42,6 +44,29 @@ function toState(record: MemoryRunStateRecord): MemoryRunState {
 export async function readMemoryRunState(runId: string): Promise<MemoryRunState | null> {
   const record = await MemoryRunStateModel.findOne({ runId }).lean();
   return record ? toState(record) : null;
+}
+
+/** Reconcile a receipt left pending by a crash or an interrupted retain request. */
+export async function settleStaleRetention(runId: string, now: Date): Promise<MemoryRunState> {
+  const cutoff = new Date(now.getTime() - 10_000);
+  const changed = await MemoryRunStateModel.findOneAndUpdate(
+    { runId, "retention.status": "pending", "retention.updatedAt": { $lte: cutoff } },
+    { $set: { "retention.status": "unknown", "retention.updatedAt": now } },
+    { new: true },
+  ).lean();
+  if (changed) {
+    const state = toState(changed);
+    const persisted = await appendMemoryEventToMongo({
+      sessionId: state.sessionId,
+      type: "memory.retention_unknown",
+      data: { runId, bankId: state.bankId, status: "unknown", updatedAt: state.retention.updatedAt },
+    });
+    notifyEventLogListeners(persisted);
+    return state;
+  }
+  const state = await readMemoryRunState(runId);
+  if (!state) throw new Error("MEMORY_RUN_STATE_NOT_FOUND");
+  return state;
 }
 
 export async function writeMemoryRunState(input: {

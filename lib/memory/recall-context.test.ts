@@ -11,6 +11,7 @@ function fakeProvider(recall: MemoryProvider["recall"]): MemoryProvider {
   return {
     ensureBank: vi.fn(),
     retain: vi.fn(),
+    retainWithOutcome: vi.fn(),
     recall,
     deleteBank: vi.fn(),
     status: vi.fn(),

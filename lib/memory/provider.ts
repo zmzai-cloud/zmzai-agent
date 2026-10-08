@@ -16,6 +16,7 @@ import { HindsightClient } from "@vectorize-io/hindsight-client";
 export type MemoryRecallInput = { bankId: string; query: string; maxFacts?: number };
 export type MemoryRecallHit = { memoryId?: string; text: string; score?: number };
 export type MemoryRetainInput = { bankId: string; content: string; context: string };
+export type MemoryRetainOutcome = "succeeded" | "failed" | "unknown";
 export type MemoryStatus = { available: boolean; factCount: number | null };
 
 export interface MemoryProvider {
@@ -23,6 +24,7 @@ export interface MemoryProvider {
   ensureBank(bankId: string): Promise<void>;
   /** 沉淀记忆。失败/超时静默（warn），永不抛出。 */
   retain(input: MemoryRetainInput): Promise<void>;
+  retainWithOutcome(input: MemoryRetainInput): Promise<MemoryRetainOutcome>;
   /** 语义召回。可达但无结果返回 []；不可用返回 null。 */
   recall(input: MemoryRecallInput): Promise<MemoryRecallHit[] | null>;
   /** 删除 bank（workspace 删除时 fire-and-forget）。 */
@@ -97,6 +99,7 @@ export function createNoopMemoryProvider(): MemoryProvider {
   return {
     ensureBank: () => Promise.resolve(),
     retain: () => Promise.resolve(),
+    retainWithOutcome: () => Promise.resolve("unknown"),
     recall: () => Promise.resolve(null),
     deleteBank: () => Promise.resolve(),
     status: () => Promise.resolve({ available: false, factCount: null }),
@@ -116,6 +119,32 @@ export function createHindsightMemoryProvider(deps: {
     return client;
   };
 
+  const retainWithOutcome = async ({ bankId, content, context }: MemoryRetainInput): Promise<MemoryRetainOutcome> => {
+    const controller = new AbortController();
+    let timedOut = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<MemoryRetainOutcome>((resolve) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        warn(`retain timed out after ${RETAIN_TIMEOUT_MS}ms`, bankId);
+        resolve("unknown");
+      }, RETAIN_TIMEOUT_MS);
+    });
+    const request = Promise.resolve().then(() => getClient().retain(bankId, content, { context, signal: controller.signal }))
+      .then((): MemoryRetainOutcome => "succeeded")
+      .catch((error: unknown): MemoryRetainOutcome => {
+        if (timedOut || (error instanceof Error && error.name === "AbortError")) return "unknown";
+        warn("retain", bankId);
+        return "failed";
+      });
+    try {
+      return await Promise.race([request, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   return {
     ensureBank: (bankId) =>
       withTimeout(
@@ -130,14 +159,8 @@ export function createHindsightMemoryProvider(deps: {
         },
         null,
       ).then(() => undefined),
-    retain: ({ bankId, content, context }) =>
-      withTimeout(
-        bankId,
-        "retain",
-        RETAIN_TIMEOUT_MS,
-        (signal) => getClient().retain(bankId, content, { context, signal }).then(() => undefined),
-        undefined,
-      ),
+    retain: (input) => retainWithOutcome(input).then(() => undefined),
+    retainWithOutcome,
     recall: async ({ bankId, query, maxFacts }) => {
       const limit = maxFacts ?? RECALL_DEFAULT_MAX_FACTS;
       const response = await withTimeout(

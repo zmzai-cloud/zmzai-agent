@@ -75,6 +75,25 @@ describe("hindsight memory provider", () => {
     warnSpy.mockRestore();
   });
 
+  it("reports acknowledged retain, known rejection, and timeout distinctly", async () => {
+    const input = { bankId: "ws_1", content: "user: hi", context: "{}" };
+    const success = createHindsightMemoryProvider({ apiUrl: "http://localhost", clientFactory: () => makeClient() });
+    await expect(success.retainWithOutcome(input)).resolves.toBe("succeeded");
+    const failure = createHindsightMemoryProvider({ apiUrl: "http://localhost", clientFactory: () => makeClient({ retain: vi.fn().mockRejectedValue(new Error("user: hi")) }) });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await expect(failure.retainWithOutcome(input)).resolves.toBe("failed");
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain("user: hi");
+    vi.useFakeTimers();
+    const retain = vi.fn(() => new Promise<never>(() => undefined));
+    const timeout = createHindsightMemoryProvider({ apiUrl: "http://localhost", clientFactory: () => makeClient({ retain }) });
+    const pending = timeout.retainWithOutcome(input);
+    await vi.advanceTimersByTimeAsync(RETAIN_TIMEOUT_MS);
+    await expect(pending).resolves.toBe("unknown");
+    expect(retain).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+    warnSpy.mockRestore();
+  });
+
   it("is idempotent per bank for ensureBank", async () => {
     const client = makeClient();
     const provider = createHindsightMemoryProvider({ apiUrl: "http://127.0.0.1:8888", clientFactory: () => client });

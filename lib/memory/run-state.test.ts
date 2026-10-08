@@ -9,7 +9,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/models/memory-run-state", () => ({
   MemoryRunStateModel: {
     findOne: vi.fn((query: { runId: string }) => ({ lean: async () => mocks.states.get(query.runId) ?? null })),
-    findOneAndUpdate: vi.fn((query: { runId: string }, update: { $setOnInsert: Record<string, unknown>; $set: Record<string, unknown> }) => {
+    findOneAndUpdate: vi.fn((query: { runId: string; "retention.status"?: string; "retention.updatedAt"?: { $lte: Date } }, update: { $setOnInsert?: Record<string, unknown>; $set: Record<string, unknown> }) => {
+      const existing = mocks.states.get(query.runId);
+      if (query["retention.status"] && (!existing || (existing.retention as { status: string; updatedAt: Date }).status !== query["retention.status"] || (existing.retention as { updatedAt: Date }).updatedAt > query["retention.updatedAt"]!.$lte)) return { lean: async () => null };
       const current = mocks.states.get(query.runId) ?? {
         ...update.$setOnInsert,
         recall: { status: "pending", hits: [], observedAt: null },
@@ -41,7 +43,7 @@ vi.mock("@zmzai/agent-framework", async (importOriginal) => {
 });
 
 import { recordMemoryEvent } from "@/lib/memory/events";
-import { readMemoryRunState } from "@/lib/memory/run-state";
+import { readMemoryRunState, settleStaleRetention } from "@/lib/memory/run-state";
 
 beforeEach(() => {
   mocks.states.clear();
@@ -86,5 +88,17 @@ describe("memory Run receipts", () => {
   ] as const)("maps %s to %s", async (type, status) => {
     await recordMemoryEvent({ runId: "run_4", sessionId: "ses_4", bankId: "ws_1", type, payload: {} });
     expect((await readMemoryRunState("run_4"))?.retention.status).toBe(status);
+  });
+
+  it("settles a stale pending receipt once and leaves recent or terminal receipts alone", async () => {
+    mocks.states.set("run_1", { runId: "run_1", sessionId: "ses_1", bankId: "ws_1", recall: { status: "pending", hits: [], observedAt: null }, retention: { status: "pending", updatedAt: new Date("2026-10-08T10:00:00Z") } });
+    expect((await settleStaleRetention("run_1", new Date("2026-10-08T10:00:09Z")))?.retention.status).toBe("pending");
+    const [first, second] = await Promise.all([
+      settleStaleRetention("run_1", new Date("2026-10-08T10:00:11Z")),
+      settleStaleRetention("run_1", new Date("2026-10-08T10:00:12Z")),
+    ]);
+    expect(first.retention.status).toBe("unknown");
+    expect(second.retention.status).toBe("unknown");
+    expect(mocks.createEvent).toHaveBeenCalledTimes(1);
   });
 });
