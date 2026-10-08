@@ -1,26 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  runFindOne: vi.fn(),
   retain: vi.fn(),
 }));
 
-vi.mock("@/models/run", () => ({ RunModel: { findOne: mocks.runFindOne } }));
 vi.mock("@/lib/memory/provider", () => ({
   getMemoryProvider: () => ({ retain: mocks.retain }),
 }));
 
 import { clearRetainInFlightForTest, createMemoryRetainHook } from "./retain-hook";
-
-function runLookup(runId: string | null) {
-  return vi.fn().mockReturnValue({
-    sort: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        lean: vi.fn().mockResolvedValue(runId ? { runId } : null),
-      }),
-    }),
-  });
-}
+import { beginMemoryAttempt, takeMemoryAttempt } from "./attempt-run";
 
 const baseInput = {
   sessionId: "ses_x",
@@ -37,12 +26,13 @@ const baseInput = {
 beforeEach(() => {
   vi.clearAllMocks();
   clearRetainInFlightForTest();
-  mocks.runFindOne.mockImplementation(() => runLookup("run_1")());
+  takeMemoryAttempt("ses_x");
   mocks.retain.mockResolvedValue(undefined);
 });
 
 describe("createMemoryRetainHook", () => {
   it("正常终态：retain 一次，content 为 transcript，context 含 sessionId+runId", async () => {
+    beginMemoryAttempt("ses_x", "run_1");
     await createMemoryRetainHook().onRunEnd!(baseInput);
     expect(mocks.retain).toHaveBeenCalledTimes(1);
     const call = mocks.retain.mock.calls[0]![0] as { bankId: string; content: string; context: string };
@@ -57,7 +47,9 @@ describe("createMemoryRetainHook", () => {
     mocks.retain.mockImplementation(() => gate);
 
     const hook = createMemoryRetainHook();
+    beginMemoryAttempt("ses_x", "run_1");
     const first = hook.onRunEnd!(baseInput);
+    beginMemoryAttempt("ses_x", "run_1");
     const second = hook.onRunEnd!(baseInput);
     await Promise.all([first, second]);
     expect(mocks.retain).toHaveBeenCalledTimes(1);
@@ -65,22 +57,34 @@ describe("createMemoryRetainHook", () => {
     release();
     // 等 finally 清理 in-flight（retain settle 后的微任务）
     await new Promise((resolve) => setTimeout(resolve, 0));
+    beginMemoryAttempt("ses_x", "run_1");
     await hook.onRunEnd!(baseInput);
     expect(mocks.retain).toHaveBeenCalledTimes(2);
   });
 
-  it("RunModel 查询失败：回退 sessionId 作为 context.runId", async () => {
-    mocks.runFindOne.mockImplementation(() => { throw new Error("mongo down"); });
+  it("missing binding after restart retains best effort without fabricating a Run ID", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     await createMemoryRetainHook().onRunEnd!(baseInput);
     const call = mocks.retain.mock.calls[0]![0] as { context: string };
-    expect(JSON.parse(call.context)).toEqual({ sessionId: "ses_x", runId: "ses_x" });
+    expect(JSON.parse(call.context)).toEqual({ sessionId: "ses_x" });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("missing Run binding"));
+    warnSpy.mockRestore();
   });
 
-  it("空 newMessages / 无 workspaceId：跳过且不查 RunModel", async () => {
+  it("first hook captures its Run synchronously before queued follow-up binds", async () => {
+    const hook = createMemoryRetainHook();
+    beginMemoryAttempt("ses_x", "run_1");
+    const first = hook.onRunEnd!(baseInput);
+    beginMemoryAttempt("ses_x", "run_2");
+    const second = hook.onRunEnd!({ ...baseInput, newMessages: [{ role: "user", text: "follow-up" }] });
+    await Promise.all([first, second]);
+    expect(mocks.retain.mock.calls.map(([call]) => JSON.parse(call.context).runId)).toEqual(["run_1", "run_2"]);
+  });
+
+  it("空 newMessages / 无 workspaceId：跳过 retain", async () => {
     await createMemoryRetainHook().onRunEnd!({ ...baseInput, newMessages: [] });
     await createMemoryRetainHook().onRunEnd!({ ...baseInput, workspaceId: undefined });
     expect(mocks.retain).not.toHaveBeenCalled();
-    expect(mocks.runFindOne).not.toHaveBeenCalled();
   });
 
   it("retain 抛错：仅 warn 不冒泡", async () => {

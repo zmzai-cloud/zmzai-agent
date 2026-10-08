@@ -1,7 +1,6 @@
 import type { LifecycleHook, RunTranscriptMessage } from "@zmzai/agent-framework";
 
-import { RunModel } from "@/models/run";
-
+import { takeMemoryAttempt } from "./attempt-run";
 import { formatRetainTranscript } from "./format";
 import { getMemoryProvider } from "./provider";
 
@@ -10,17 +9,6 @@ import { getMemoryProvider } from "./provider";
  *  的后续 run（重试场景）再次触发。 */
 const inFlight = new Set<string>();
 
-async function runIdForSession(sessionId: string): Promise<string> {
-  try {
-    // 不带 active 过滤：终态时 run 可能已标记完成。查询失败回退 sessionId。
-    const run = await RunModel.findOne({ sessionId }).sort({ createdAt: -1 }).select({ runId: 1 }).lean();
-    if (run?.runId) return run.runId;
-  } catch {
-    // 回退到 sessionId
-  }
-  return sessionId;
-}
-
 /** retain hook（spec §记忆数据流）：挂在 runner 终态，把本次 run 新增的
  *  user/assistant 消息 fire-and-forget 存入 bank。无 workspaceId / 空消息
  *  直接跳过；retain 抛错只 warn 不影响 run。 */
@@ -28,16 +16,20 @@ export function createMemoryRetainHook(): LifecycleHook {
   return {
     name: "memory-retain",
     onRunEnd: async (input: { sessionId: string; workspaceId?: string; newMessages?: RunTranscriptMessage[] }) => {
+      // Capture and remove before any asynchronous work. A queued follow-up can
+      // bind another Run to this session immediately after this hook starts.
+      const runId = takeMemoryAttempt(input.sessionId);
       if (!input.workspaceId || !input.newMessages?.length) return;
-      const runId = await runIdForSession(input.sessionId);
-      if (inFlight.has(runId)) return;
+      if (!runId) console.warn("[memory] missing Run binding for retention");
+      const key = runId ?? input.sessionId;
+      if (inFlight.has(key)) return;
       const content = formatRetainTranscript(input.newMessages);
       if (!content) return;
-      inFlight.add(runId);
+      inFlight.add(key);
       void getMemoryProvider()
-        .retain({ bankId: input.workspaceId, content, context: JSON.stringify({ sessionId: input.sessionId, runId }) })
+        .retain({ bankId: input.workspaceId, content, context: JSON.stringify({ sessionId: input.sessionId, ...(runId ? { runId } : {}) }) })
         .catch((error) => console.warn(`[memory] retain failed for bank ${input.workspaceId}:`, error))
-        .finally(() => inFlight.delete(runId));
+        .finally(() => inFlight.delete(key));
     },
   };
 }
