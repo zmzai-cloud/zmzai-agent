@@ -4,12 +4,14 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   getEnv: vi.fn(),
   taskFind: vi.fn(),
+  runFind: vi.fn(),
   workspaceFind: vi.fn(),
 }));
 
 vi.mock("@/config/env", () => ({ getServerEnvironment: mocks.getEnv }));
 vi.mock("@/lib/database/mongodb", () => ({ connectMongo: vi.fn() }));
 vi.mock("@/models/task", () => ({ TaskModel: { find: mocks.taskFind } }));
+vi.mock("@/models/run", () => ({ RunModel: { find: mocks.runFind } }));
 vi.mock("@/models/workspace", () => ({ WorkspaceModel: { find: mocks.workspaceFind } }));
 
 import { GET } from "@/app/api/internal/workos/summary/route";
@@ -30,6 +32,7 @@ function findChain(result: unknown[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.runFind.mockReturnValue(findChain([]));
   mocks.getEnv.mockReturnValue({ WORKOS_SERVICE_SECRET_CURRENT: SECRET_CURRENT, WORKOS_SERVICE_SECRET_PREVIOUS: undefined });
 });
 
@@ -91,7 +94,7 @@ describe("GET /api/internal/workos/summary", () => {
     expect(okRes.status).toBe(200);
     expect(taskChain.limit).toHaveBeenCalledWith(20); // 99 截断到 20
     const body = await okRes.json();
-    expect(body.tasks[0]).toEqual({ taskId: "task_1", title: "发布周报", status: "active", workspaceId: "ws_1", updatedAt: "2026-08-27T00:00:00.000Z" });
+    expect(body.tasks[0]).toEqual({ taskId: "task_1", title: "发布周报", status: "active", workspaceId: "ws_1", updatedAt: "2026-08-27T00:00:00.000Z", runStatus: null, attention: null });
     expect(body.workspaces[0].knowledgeCount).toBe(2);
     expect(okRes.headers.get("cache-control")).toBe("no-store");
   });

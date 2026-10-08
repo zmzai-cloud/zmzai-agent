@@ -11,8 +11,6 @@ export default defineConfig({
       // theme 0.3.0 业务组件自带 CSS import——测试环境 stub 成空模块
       { find: /\.css$/, replacement: path.join(rootDirectory, "lib/__css-stub.js") },
       { find: /^@\//, replacement: rootDirectory + "/" },
-      { find: /^@zmzai\/agent-framework$/, replacement: path.join(rootDirectory, "packages/agent-framework/src/index.ts") },
-      { find: /^@zmzai\/agent-framework\//, replacement: path.join(rootDirectory, "packages/agent-framework/src/") },
     ],
   },
   test: {
