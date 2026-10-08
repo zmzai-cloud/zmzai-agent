@@ -182,6 +182,17 @@ export async function activeRunIdForSession(sessionId: string): Promise<string> 
   return run?.runId ?? sessionId;
 }
 
+/** Resolve the product Run at the framework's actual attempt start. Queued
+ * prompts bypass the HTTP prompt route, so after the previous Run terminates
+ * this creates their new Run. Sessions without a product Task stay framework-only. */
+export async function ensureRunForFrameworkAttempt(session: SessionInfo): Promise<RunRecord | null> {
+  const active = await RunModel.findOne({ sessionId: session.id, active: true }).sort({ createdAt: -1 }).lean();
+  if (active) return active as RunRecord;
+  const task = await taskForSession(session.id);
+  if (!task) return null;
+  return createRunForTask({ task, session });
+}
+
 export async function ensureRunForPrompt(session: SessionInfo, goal?: string, options?: { runIdOverride?: string; parentRunId?: string | null; resumeCheckpointId?: string | null; forceNewRun?: boolean }): Promise<{ task: TaskRecord; run: RunRecord }> {
   let task = await taskForSession(session.id);
   if (!task) task = await createTaskForSession({ session, goal });

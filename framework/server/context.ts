@@ -15,10 +15,8 @@ import { combineAgentInstructions } from "@/lib/project-agent-context";
 import { getWorkspaceSkillsByIds } from "@/lib/workspace-skills";
 import { getWorkspacePluginSkillsByIds } from "@/lib/workspace-plugins";
 import { taskForSession } from "@/lib/task-run-control";
-import { recallMemoryContext } from "@/lib/memory/recall-context";
+import { memoryContextForAttempt } from "@/lib/memory/attempt-context";
 import { createMemoryRetainHook } from "@/lib/memory/retain-hook";
-import { beginMemoryAttempt } from "@/lib/memory/attempt-run";
-import { RunModel } from "@/models/run";
 import { ProjectModel } from "@/models/project";
 import { ProjectContextItemModel } from "@/models/project-context-item";
 
@@ -149,19 +147,7 @@ function getOrCreateRunner(): SessionRunner {
     compaction: { enabled: true, contextWindow: 128_000, summaryModel: createRelayModel(defaultRelayModel) },
     // 长期记忆（spec §记忆）：recall 注入 + 终态 retain。未配 HINDSIGHT_API_URL
     // 时 provider 是 noop，两个挂点零开销、行为零变化。
-    memoryContextFor: async (session, text) => {
-      // Bind at attempt start while the product Run is active. A later lookup
-      // at onRunEnd can see a queued follow-up in the same session.
-      if (!localMode) {
-        try {
-          const run = await RunModel.findOne({ sessionId: session.id, active: true }).select({ runId: 1 }).lean();
-          if (run?.runId) beginMemoryAttempt(session.id, run.runId);
-        } catch {
-          // Memory remains best-effort when the product Run lookup is unavailable.
-        }
-      }
-      return recallMemoryContext(session, text);
-    },
+    memoryContextFor: (session, text) => memoryContextForAttempt(session, text, !localMode),
     hooks: [createMemoryRetainHook()],
     },
   });

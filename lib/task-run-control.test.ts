@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   runCreate: vi.fn(),
   runUpdateOne: vi.fn(),
   taskUpdateOne: vi.fn(),
+  taskFindOne: vi.fn(),
   reserveProjectRun: vi.fn(),
   releaseProjectRun: vi.fn(),
   reserveWorkspaceRun: vi.fn(),
@@ -12,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/models/run", () => ({ RunModel: { findOne: mocks.runFindOne, create: mocks.runCreate, updateOne: mocks.runUpdateOne } }));
-vi.mock("@/models/task", () => ({ TaskModel: { updateOne: mocks.taskUpdateOne } }));
+vi.mock("@/models/task", () => ({ TaskModel: { updateOne: mocks.taskUpdateOne, findOne: mocks.taskFindOne } }));
 vi.mock("@/lib/project-budget", () => ({
   reserveProjectRun: mocks.reserveProjectRun,
   releaseProjectRun: mocks.releaseProjectRun,
@@ -20,7 +21,7 @@ vi.mock("@/lib/project-budget", () => ({
   releaseWorkspaceRun: mocks.releaseWorkspaceRun,
 }));
 
-import { createRunForTask } from "@/lib/task-run-control";
+import { createRunForTask, ensureRunForFrameworkAttempt } from "@/lib/task-run-control";
 
 function query(result: unknown) {
   return { sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(result) }) };
@@ -127,5 +128,37 @@ describe("task/run control projection", () => {
     await createRunForTask({ task: Object.assign({}, task, { projectId: "project_1" }) as never, session, reserveBudget: false });
 
     expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({ budgetReserved: false }));
+  });
+
+  it("creates one new product Run when a queued framework prompt starts after the first Run ended", async () => {
+    const first = { ...makeRun("run_1"), attempt: 1 };
+    const previous = { ...first, active: false, status: "succeeded" };
+    const followUp = { ...makeRun("run_2"), parentRunId: "run_1", attempt: 2 };
+    mocks.runFindOne
+      .mockReturnValueOnce(query(first)) // first attempt's active Run
+      .mockReturnValueOnce(query(null)) // queued attempt: no active Run
+      .mockReturnValueOnce(query(previous)) // taskForSession finds prior Run
+      .mockReturnValueOnce(query(null)) // createRunForTask sees no active Run
+      .mockReturnValueOnce(query(previous)) // parent/attempt count
+      .mockReturnValueOnce(query(followUp)); // retry of same queued attempt
+    mocks.taskFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(task) });
+    mocks.runCreate.mockResolvedValue(followUp);
+
+    expect((await ensureRunForFrameworkAttempt(session))?.runId).toBe("run_1");
+    expect((await ensureRunForFrameworkAttempt(session))?.runId).toBe("run_2");
+    expect((await ensureRunForFrameworkAttempt(session))?.runId).toBe("run_2");
+
+    expect(mocks.runCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: "task_1", sessionId: "ses_1", workspaceId: "ws_1", userId: "user_1",
+      parentRunId: "run_1", attempt: 2, active: true,
+    }));
+  });
+
+  it("does not create a product Run for a framework-only session", async () => {
+    mocks.runFindOne.mockReturnValueOnce(query(null)).mockReturnValueOnce(query(null));
+
+    expect(await ensureRunForFrameworkAttempt(session)).toBeNull();
+    expect(mocks.runCreate).not.toHaveBeenCalled();
   });
 });
