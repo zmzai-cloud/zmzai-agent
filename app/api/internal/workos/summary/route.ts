@@ -1,9 +1,7 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { isValidObjectId } from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getServerEnvironment } from "@/config/env";
+import { isWorkosServiceAuthorized } from "@/lib/workos-service-auth";
 import { connectMongo } from "@/lib/database/mongodb";
 import { TaskModel } from "@/models/task";
 import { RunModel } from "@/models/run";
@@ -12,12 +10,6 @@ import { WorkspaceModel } from "@/models/workspace";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function secretMatches(input: string | null, expected: string | undefined): boolean {
-  if (!input || !expected) return false;
-  const left = Buffer.from(input);
-  const right = Buffer.from(expected);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
 
 /** limit 查询参数：缺省 undefined（走默认 8）；非正整数/非数字返回 "invalid"；越界截断到 1–20。 */
 function parseLimit(raw: string | null): number | "invalid" | undefined {
@@ -30,12 +22,7 @@ function parseLimit(raw: string | null): number | "invalid" | undefined {
 
 /** workos（workos.zmzai.cloud）服务间拉取：某用户的最近任务 + 智能体（含知识库计数）摘要。 */
 export async function GET(request: NextRequest) {
-  const environment = getServerEnvironment();
-  const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? request.headers.get("x-workos-service-secret");
-  const authorized =
-    secretMatches(supplied, environment.WORKOS_SERVICE_SECRET_CURRENT) ||
-    secretMatches(supplied, environment.WORKOS_SERVICE_SECRET_PREVIOUS);
-  if (!authorized) return NextResponse.json({ error: "未授权的服务间请求" }, { status: 401 });
+  if (!isWorkosServiceAuthorized(request)) return NextResponse.json({ error: "未授权的服务间请求" }, { status: 401 });
 
   const userId = request.nextUrl.searchParams.get("userId")?.trim() ?? "";
   if (!isValidObjectId(userId)) return NextResponse.json({ error: "userId 非法" }, { status: 400 });

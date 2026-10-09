@@ -1,9 +1,9 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getServerEnvironment } from "@/config/env";
+import { isWorkosServiceAuthorized } from "@/lib/workos-service-auth";
 import { createFrameworkSession, defaultStore } from "@/framework/core/runtime/runner";
 import { getFrameworkRunner } from "@/framework/server/context";
 import { connectMongo } from "@/lib/database/mongodb";
@@ -22,20 +22,9 @@ const createSchema = z.object({
   title: z.string().trim().min(1).max(240).optional(),
 }).strict();
 
-function secretMatches(input: string | null, expected: string | undefined): boolean {
-  if (!input || !expected) return false;
-  const left = Buffer.from(input);
-  const right = Buffer.from(expected);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
 /** workos 仅能代表已登录用户创建其自身 workspace 中的 Agent 任务。 */
 export async function POST(request: NextRequest) {
-  const environment = getServerEnvironment();
-  const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? request.headers.get("x-workos-service-secret");
-  if (!secretMatches(supplied, environment.WORKOS_SERVICE_SECRET_CURRENT) && !secretMatches(supplied, environment.WORKOS_SERVICE_SECRET_PREVIOUS)) {
-    return NextResponse.json({ error: "未授权的服务间请求" }, { status: 401 });
-  }
+  if (!isWorkosServiceAuthorized(request)) return NextResponse.json({ error: "未授权的服务间请求" }, { status: 401 });
 
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "任务请求格式不正确" }, { status: 400 });
@@ -73,13 +62,16 @@ export async function POST(request: NextRequest) {
       title: data.title ?? data.goal.slice(0, 80),
     });
   }
+  if (session.userId !== data.userId || session.workspaceId !== workspace.workspaceId) {
+    return NextResponse.json({ error: "Workspace 不存在或无权访问" }, { status: 404 });
+  }
   let task = await taskForSession(session.id);
   const existingRun = task ? await RunModel.findOne({ taskId: task.taskId }).sort({ createdAt: -1 }).lean() as RunRecord | null : null;
   if (task && existingRun && claim.replayed) {
-    return NextResponse.json({ taskId: task.taskId, runId: existingRun.runId, status: existingRun.status, replayed: true }, { status: 202, headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ sessionId: session.id, taskId: task.taskId, runId: existingRun.runId, status: existingRun.status, replayed: true }, { status: 202, headers: { "cache-control": "no-store" } });
   }
   if (!task) task = await createTaskForSession({ session, goal: data.goal, title: data.title, source: "api" });
   const run = existingRun ?? await createRunForTask({ task, session });
   await getFrameworkRunner().prompt(session.id, { text: data.goal });
-  return NextResponse.json({ taskId: task.taskId, runId: run.runId, status: "queued", replayed: claim.replayed }, { status: 202, headers: { "cache-control": "no-store" } });
+  return NextResponse.json({ sessionId: session.id, taskId: task.taskId, runId: run.runId, status: "queued", replayed: claim.replayed }, { status: 202, headers: { "cache-control": "no-store" } });
 }
