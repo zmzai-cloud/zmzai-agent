@@ -11,6 +11,7 @@ import { activeRunIdForSession } from "@/lib/task-run-control";
 import { FrameworkSessionModel } from "@/framework/core/session/mongo-models";
 import { defaultRelayModel, getWorkspace } from "@/lib/workspaces";
 import { resolveWorkspaceConnectorTools } from "@/lib/mcp-connector-tools";
+import { resolveWorkosDomainTools } from "@/lib/workos-domain-tools";
 import { combineAgentInstructions } from "@/lib/project-agent-context";
 import { getWorkspaceSkillsByIds } from "@/lib/workspace-skills";
 import { getWorkspacePluginSkillsByIds } from "@/lib/workspace-plugins";
@@ -140,7 +141,7 @@ function getOrCreateRunner(): SessionRunner {
             steps: ws.steps,
             permission: [...autoAllow, ...(ws.permission as Ruleset)],
           },
-          tools: await resolveWorkspaceConnectorTools({ userId: session.userId, workspaceId: session.workspaceId, connectorIds: ws.connectorIds }),
+          tools: [...(await resolveWorkspaceConnectorTools({ userId: session.userId, workspaceId: session.workspaceId, connectorIds: ws.connectorIds })), ...resolveWorkosDomainTools()],
         };
       },
     },
