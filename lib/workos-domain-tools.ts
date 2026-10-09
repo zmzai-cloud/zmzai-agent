@@ -78,6 +78,17 @@ async function runAction(ctx: { sessionId: string; userId: string; workspaceId: 
   return dispatchWorkosAction({ userId: ctx.userId, sessionId: ctx.sessionId, workspaceId: ctx.workspaceId, ...identity, action });
 }
 
+/** GLM 系模型会把 JSON null 发成字符串 "null"，且 .default() 在 JSON Schema
+ *  桥接后仍可能被当成必填。这里用宽松 optional schema 承接传输，执行期归一化。 */
+const looseDueAt = z.string().max(64).nullable().optional();
+
+function normalizeDueAt(value: string | null | undefined): string | null {
+  if (value === null || value === undefined || value === "null" || value.trim() === "") return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) throw new Error(`dueAt 无法解析为时间：${value.slice(0, 40)}`);
+  return parsed.toISOString();
+}
+
 export const workosCreateNoteTool: ToolDef = {
   id: "workos_create_note",
   label: "工作空间 · 保存笔记",
@@ -86,12 +97,12 @@ export const workosCreateNoteTool: ToolDef = {
     "未经用户要求不要主动创建。返回的 noteId 可用于后续更新。",
   parameters: z.object({
     title: z.string().min(1).max(240).describe("笔记标题，简洁概括内容"),
-    markdown: z.string().max(256 * 1024).default("").describe("笔记正文，Markdown 格式"),
+    markdown: z.string().max(256 * 1024).optional().describe("笔记正文，Markdown 格式"),
   }),
   permission: () => null,
   executionMode: "sequential",
   async execute(args, ctx) {
-    const outcome = await runAction(ctx, { type: "create_note", title: args.title, markdown: args.markdown });
+    const outcome = await runAction(ctx, { type: "create_note", title: args.title, markdown: args.markdown ?? "" });
     if (!outcome.ok) throw new Error(outcome.message ?? `保存笔记失败（${outcome.error}）`);
     const noteId = outcome.result.noteId ?? "";
     return {
@@ -110,13 +121,13 @@ export const workosCreateTodoTool: ToolDef = {
     "dueAt 使用 ISO 8601 时间（如 2026-10-12T09:00:00Z）；用户没有给出明确日期时必须留空，不要编造日期。",
   parameters: z.object({
     title: z.string().min(1).max(240).describe("待办标题，一句话行动项"),
-    description: z.string().max(8 * 1024).default("").describe("补充说明，可留空"),
-    dueAt: z.string().datetime().nullable().default(null).describe("截止时间 ISO 8601；无明确日期则传 null"),
+    description: z.string().max(8 * 1024).optional().describe("补充说明，可留空"),
+    dueAt: looseDueAt.describe("截止时间 ISO 8601；无明确日期则省略或传 null"),
   }),
   permission: () => null,
   executionMode: "sequential",
   async execute(args, ctx) {
-    const outcome = await runAction(ctx, { type: "create_todo", title: args.title, description: args.description, dueAt: args.dueAt });
+    const outcome = await runAction(ctx, { type: "create_todo", title: args.title, description: args.description ?? "", dueAt: normalizeDueAt(args.dueAt) });
     if (!outcome.ok) throw new Error(outcome.message ?? `创建待办失败（${outcome.error}）`);
     const todoId = outcome.result.todoId ?? "";
     return {
@@ -184,7 +195,7 @@ export const workosUpdateTodoTool: ToolDef = {
     todoId: z.string().min(1).max(80),
     title: z.string().min(1).max(240).optional(),
     description: z.string().max(8 * 1024).optional(),
-    dueAt: z.string().datetime().nullable().optional().describe("新截止时间；传 null 表示改为未排期"),
+    dueAt: looseDueAt.describe("新截止时间；传 null 或省略表示改为未排期"),
     status: z.enum(["open", "done"]).optional().describe("done 表示完成，open 表示恢复"),
   }),
   permission: (args) => ({
@@ -199,7 +210,7 @@ export const workosUpdateTodoTool: ToolDef = {
       todoId: args.todoId,
       ...(args.title !== undefined ? { title: args.title } : {}),
       ...(args.description !== undefined ? { description: args.description } : {}),
-      ...(args.dueAt !== undefined ? { dueAt: args.dueAt } : {}),
+      ...(args.dueAt !== undefined ? { dueAt: normalizeDueAt(args.dueAt) } : {}),
       ...(args.status !== undefined ? { status: args.status } : {}),
     });
     if (!outcome.ok) throw new Error(outcome.message ?? `更新待办失败（${outcome.error}）`);
