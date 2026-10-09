@@ -114,7 +114,6 @@ function getOrCreateRunner(): SessionRunner {
       // Workspace = 智能体：从 workspace 文档读 prompt/steps/permission，
       // 返回 ResolvedAgent。不再走 AgentVersion（已废弃）。
       resolve: async (session) => {
-        try {
         // Child sessions must keep their explicit `explore` / `general`
         // identity. Applying the Workspace primary-agent resolver here would
         // silently replace its prompt, steps and permission policy.
@@ -132,8 +131,6 @@ function getOrCreateRunner(): SessionRunner {
         // 自治档位：auto 档在 workspace 规则前预置 bash 放行；排在后面（last-match-wins）
         // 的显式规则仍可覆盖它，deny/ask 不被绕过。"always" 是历史值，等同 ask。
         const autoAllow: Ruleset = ws.approvalMode === "auto" ? [{ permission: "bash", pattern: "*", action: "allow" }] : [];
-        const resolvedTools = [...(await resolveWorkspaceConnectorTools({ userId: session.userId, workspaceId: session.workspaceId, connectorIds: ws.connectorIds })), ...resolveWorkosDomainTools()];
-        console.info(`[workos-debug] session=${session.id} tools=${resolvedTools.map((tool) => tool.id).join(",")}`);
         return {
           agent: {
             name: ws.name || "default",
@@ -144,12 +141,10 @@ function getOrCreateRunner(): SessionRunner {
             steps: ws.steps,
             permission: [...autoAllow, ...(ws.permission as Ruleset)],
           },
-          tools: resolvedTools,
+          // 个人工作空间领域工具（笔记/待办）随 workspace 会话注册：创建免审批
+          //（模型只在用户明确要求时调用），改写走 permission=workos 默认 ask。
+          tools: [...(await resolveWorkspaceConnectorTools({ userId: session.userId, workspaceId: session.workspaceId, connectorIds: ws.connectorIds })), ...resolveWorkosDomainTools()],
         };
-        } catch (resolverError) {
-          console.error("[workos-debug] workspace resolver failed", resolverError);
-          throw resolverError;
-        }
       },
     },
     compaction: { enabled: true, contextWindow: 128_000, summaryModel: createRelayModel(defaultRelayModel) },
