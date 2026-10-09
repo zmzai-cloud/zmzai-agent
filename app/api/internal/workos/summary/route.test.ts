@@ -94,7 +94,7 @@ describe("GET /api/internal/workos/summary", () => {
     expect(okRes.status).toBe(200);
     expect(taskChain.limit).toHaveBeenCalledWith(20); // 99 截断到 20
     const body = await okRes.json();
-    expect(body.tasks[0]).toEqual({ taskId: "task_1", title: "发布周报", status: "active", workspaceId: "ws_1", updatedAt: "2026-08-27T00:00:00.000Z", runStatus: null, attention: null });
+    expect(body.tasks[0]).toEqual({ taskId: "task_1", title: "发布周报", status: "active", workspaceId: "ws_1", updatedAt: "2026-08-27T00:00:00.000Z", runStatus: null, sessionId: null, attention: null });
     expect(body.workspaces[0].knowledgeCount).toBe(2);
     expect(okRes.headers.get("cache-control")).toBe("no-store");
   });
