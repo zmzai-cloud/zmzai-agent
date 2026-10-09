@@ -66,7 +66,7 @@ describe("memory attempt start", () => {
     await expect(memoryContextForAttempt(session, "部署偏好", true)).resolves.toBe("memory context");
     expect(mocks.recordMemoryEvent).toHaveBeenCalledWith({
       runId: "run_exact", sessionId: "ses_1", bankId: "ws_1",
-      type: "memory.recall_succeeded", payload: { hits: [{ memoryId: "mem_1", text: "prefer staging first" }] },
+      type: "memory.recall_succeeded", payload: { hits: [{ memoryId: "mem_1", text: "prefer staging first" }], usedHitCount: 1 },
     });
   });
 

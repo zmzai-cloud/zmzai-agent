@@ -3,6 +3,7 @@ import { z } from "zod";
 import { connectMongo } from "@/lib/database/mongodb";
 import { isWorkosServiceAuthorized, isWorkosUserId } from "@/lib/workos-service-auth";
 import { WorkspaceModel } from "@/models/workspace";
+import { isMemoryConfigured } from "@/lib/memory/provider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,5 +34,6 @@ export async function GET(request: NextRequest) {
   const last = page.at(-1);
   const nextCursor = workspaces.length > limit && last
     ? Buffer.from(JSON.stringify({ createdAt: last.createdAt.toISOString(), workspaceId: last.workspaceId })).toString("base64url") : null;
-  return NextResponse.json({ items: page.map(({ workspaceId, name }) => ({ workspaceId, name })), nextCursor }, { headers: { "cache-control": "no-store" } });
+  const memoryEnabled = isMemoryConfigured();
+  return NextResponse.json({ items: page.map(({ workspaceId, name }) => ({ workspaceId, name, memoryEnabled })), nextCursor }, { headers: { "cache-control": "no-store" } });
 }

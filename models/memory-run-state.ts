@@ -13,6 +13,7 @@ const memoryRunStateSchema = new Schema(
     recall: {
       status: { type: String, required: true, enum: ["pending", "hit", "empty", "unavailable", "disabled"], default: "pending" },
       hits: { type: [hitSchema], default: [] },
+      usedHitCount: { type: Number, min: 0, default: 0 },
       observedAt: { type: Date, default: null },
     },
     retention: {

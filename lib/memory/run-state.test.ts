@@ -58,6 +58,7 @@ describe("memory Run receipts", () => {
     const state = await readMemoryRunState("run_1");
     expect(state).toMatchObject({ runId: "run_1", sessionId: "ses_1", bankId: "ws_1", recall: { status: "hit" }, retention: { status: "not_started" } });
     expect(state?.recall.hits).toHaveLength(8);
+    expect(state?.recall.usedHitCount).toBe(10);
     expect(state?.recall.hits[0]).toEqual({ memoryId: "mem_0", text: "x".repeat(240) });
     expect(state?.recall.observedAt).toBeTruthy();
     expect(JSON.stringify(mocks.createEvent.mock.calls)).not.toContain("x".repeat(240));
@@ -108,6 +109,16 @@ describe("memory Run receipts", () => {
     const late = await compareAndSetRetention({ runId: "run_race", sessionId: "ses_1", bankId: "ws_1", from: "pending", to: "succeeded", at: new Date("2026-10-08T10:00:12Z") });
     expect(late).toBeNull();
     expect((await readMemoryRunState("run_race"))?.retention.status).toBe("unknown");
+  });
+
+  it("settles a crash before the retention hook only after a terminal grace period", async () => {
+    mocks.states.set("run_crash", { runId: "run_crash", sessionId: "ses_1", bankId: "ws_1", recall: { status: "empty", hits: [], observedAt: null }, retention: { status: "not_started", updatedAt: null } });
+    const now = new Date("2026-10-08T10:00:20Z");
+    expect((await settleStaleRetention("run_crash", now, new Date("2026-10-08T10:00:11Z"))).retention.status).toBe("not_started");
+    expect((await settleStaleRetention("run_crash", now, null)).retention.status).toBe("not_started");
+    expect((await settleStaleRetention("run_crash", now, new Date("2026-10-08T10:00:00Z"))).retention.status).toBe("unknown");
+    expect((await settleStaleRetention("run_crash", now, new Date("2026-10-08T10:00:00Z"))).retention.status).toBe("unknown");
+    expect(mocks.createEvent).toHaveBeenCalledTimes(1);
   });
 
   it("uses persisted not_started state to reject duplicate retention after restart", async () => {

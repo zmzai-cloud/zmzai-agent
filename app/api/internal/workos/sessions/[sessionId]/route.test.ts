@@ -35,7 +35,7 @@ it.each([null, "bad"])("rejects invalid service secret %s", async (secret) => { 
 it("accepts previous secret and serializes text parts only, settling stale memory", async () => {
  const response = await GET(req("", "previous"), ctx); expect(response.status).toBe(200);
  const body = await response.json(); expect(body.messages[0]).toMatchObject({ id: "msg_1", role: "assistant", text: "Hello world" }); expect(JSON.stringify(body.messages)).not.toContain("private reasoning"); expect(body.memory.retention.status).toBe("unknown");
- expect(m.workspace).toHaveBeenCalledWith({ workspaceId: "ws_1", userId }); expect(m.run).toHaveBeenCalledWith({ sessionId: "ses_1", workspaceId: "ws_1", userId }); expect(m.settle).toHaveBeenCalledWith("run_1", expect.any(Date));
+ expect(m.workspace).toHaveBeenCalledWith({ workspaceId: "ws_1", userId }); expect(m.run).toHaveBeenCalledWith({ sessionId: "ses_1", workspaceId: "ws_1", userId }); expect(m.settle).toHaveBeenCalledWith("run_1", expect.any(Date), null);
 });
 it.each(["other-user", "member-only"])("hides %s session facts", async (kind) => {
  if (kind === "other-user") m.session.mockResolvedValue({ ...session, userId: "other" }); else m.workspace.mockReturnValue(chain(null));
@@ -44,3 +44,13 @@ it.each(["other-user", "member-only"])("hides %s session facts", async (kind) =>
 it("rejects missing user scope", async () => { expect((await GET(new NextRequest("http://localhost/api/test", { headers: { authorization: "Bearer secret" } }), ctx)).status).toBe(400); });
 it("supports a session with no run or memory", async () => { m.run.mockReturnValue(chain(null)); const body = await (await GET(req(), ctx)).json(); expect(body.latestRun).toBeNull(); expect(body.memory).toBeNull(); expect(m.read).not.toHaveBeenCalled(); });
 it("does not settle absent memory receipts", async () => { m.read.mockResolvedValue(null); expect((await (await GET(req(), ctx)).json()).memory).toBeNull(); expect(m.settle).not.toHaveBeenCalled(); });
+it("passes terminal time for crash reconciliation and protects an active Run", async () => {
+  const finishedAt = new Date("2026-10-08T10:00:00Z");
+  m.read.mockResolvedValue({ runId: "run_1", retention: { status: "not_started" } });
+  m.run.mockReturnValue(chain({ ...run, finishedAt }));
+  await GET(req(), ctx);
+  expect(m.settle).toHaveBeenLastCalledWith("run_1", expect.any(Date), finishedAt);
+  m.run.mockReturnValue(chain({ ...run, active: true, status: "running", finishedAt: null }));
+  await GET(req(), ctx);
+  expect(m.settle).toHaveBeenLastCalledWith("run_1", expect.any(Date), null);
+});

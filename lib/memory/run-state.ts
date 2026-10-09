@@ -10,6 +10,7 @@ export type MemoryRunState = {
   recall: {
     status: "pending" | "hit" | "empty" | "unavailable" | "disabled";
     hits: MemoryHitPreview[];
+    usedHitCount: number;
     observedAt: string | null;
   };
   retention: {
@@ -19,7 +20,7 @@ export type MemoryRunState = {
 };
 
 type StateChange =
-  | { kind: "recall"; status: MemoryRunState["recall"]["status"]; hits: MemoryHitPreview[] }
+  | { kind: "recall"; status: MemoryRunState["recall"]["status"]; hits: MemoryHitPreview[]; usedHitCount: number }
   | { kind: "retention"; status: MemoryRunState["retention"]["status"] };
 
 function toState(record: MemoryRunStateRecord): MemoryRunState {
@@ -32,6 +33,7 @@ function toState(record: MemoryRunStateRecord): MemoryRunState {
     recall: {
       status: (recall?.status ?? "pending") as MemoryRunState["recall"]["status"],
       hits: (recall?.hits ?? []).map((hit) => ({ ...(hit.memoryId ? { memoryId: hit.memoryId } : {}), text: hit.text })),
+      usedHitCount: recall?.usedHitCount ?? recall?.hits?.length ?? 0,
       observedAt: recall?.observedAt?.toISOString() ?? null,
     },
     retention: {
@@ -73,13 +75,23 @@ export async function compareAndSetRetention(input: {
 }
 
 /** Reconcile a receipt left pending by a crash or an interrupted retain request. */
-export async function settleStaleRetention(runId: string, now: Date): Promise<MemoryRunState> {
+export async function settleStaleRetention(runId: string, now: Date, terminalSince?: Date | null): Promise<MemoryRunState> {
   const cutoff = new Date(now.getTime() - 10_000);
-  const changed = await MemoryRunStateModel.findOneAndUpdate(
+  let changed = await MemoryRunStateModel.findOneAndUpdate(
     { runId, "retention.status": "pending", "retention.updatedAt": { $lte: cutoff } },
     { $set: { "retention.status": "unknown", "retention.updatedAt": now } },
     { new: true },
   ).lean();
+  // A process may die after the product Run becomes terminal but before the
+  // unawaited onRunEnd hook starts. Only the persisted terminal timestamp can
+  // establish that this not_started receipt is stale; never retry retain here.
+  if (!changed && terminalSince && terminalSince <= cutoff) {
+    changed = await MemoryRunStateModel.findOneAndUpdate(
+      { runId, "retention.status": "not_started" },
+      { $set: { "retention.status": "unknown", "retention.updatedAt": now } },
+      { new: true },
+    ).lean();
+  }
   if (changed) {
     const state = toState(changed);
     const persisted = await appendMemoryEventToMongo({
@@ -104,7 +116,7 @@ export async function writeMemoryRunState(input: {
 }): Promise<MemoryRunState> {
   const { runId, sessionId, bankId, change, at } = input;
   const set = change.kind === "recall"
-    ? { "recall.status": change.status, "recall.hits": change.hits, "recall.observedAt": at }
+    ? { "recall.status": change.status, "recall.hits": change.hits, "recall.usedHitCount": change.usedHitCount, "recall.observedAt": at }
     : { "retention.status": change.status, "retention.updatedAt": at };
   const record = await MemoryRunStateModel.findOneAndUpdate(
     { runId, sessionId, bankId },

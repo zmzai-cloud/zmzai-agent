@@ -18,7 +18,7 @@ function recordRecallReceipt(session: SessionInfo, receipt: MemoryRecallReceipt)
     sessionId: session.id,
     bankId: receipt.bankId,
     type,
-    payload: type === "memory.recall_succeeded" ? { hits: receipt.hits } : {},
+    payload: type === "memory.recall_succeeded" ? { hits: receipt.hits, usedHitCount: receipt.usedHitCount ?? receipt.hits.length } : {},
   }).catch(() => {
     // Receipt persistence is best effort; the model still gets recalled context.
   });

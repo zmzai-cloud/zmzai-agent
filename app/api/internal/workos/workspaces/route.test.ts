@@ -35,6 +35,6 @@ it.each(["&limit=0", "&limit=-1", "&limit=1.5", "&cursor=bad", "&cursor=e30", "&
 it("lists only owned workspaces in stable order with a bounded limit", async () => { const c = chain([]); m.workspaces.mockReturnValue(c); const response = await GET(req("&limit=999")); expect(await response.json()).toEqual({ items: [], nextCursor: null }); expect(m.workspaces).toHaveBeenCalledWith({ userId }); expect(c.sort).toHaveBeenCalledWith({ createdAt: 1, workspaceId: 1 }); expect(c.limit).toHaveBeenCalledWith(101); });
 it("round trips a tied-timestamp cursor without leaking workspace configuration", async () => {
  const createdAt = new Date("2026-10-08T00:00:00Z"); m.workspaces.mockReturnValue(chain([{ workspaceId: "ws_a", name: "A", createdAt, prompt: "private fact" }, { workspaceId: "ws_b", name: "B", createdAt }]));
- const response = await GET(req("&limit=1")); const body = await response.json(); expect(body.items).toEqual([{ workspaceId: "ws_a", name: "A" }]); expect(body.nextCursor).toEqual(expect.any(String));
+ const response = await GET(req("&limit=1")); const body = await response.json(); expect(body.items).toEqual([{ workspaceId: "ws_a", name: "A", memoryEnabled: expect.any(Boolean) }]); expect(body.nextCursor).toEqual(expect.any(String));
  m.workspaces.mockReturnValue(chain([])); await GET(req(`&cursor=${encodeURIComponent(body.nextCursor)}`)); expect(m.workspaces).toHaveBeenLastCalledWith({ userId, $or: [{ createdAt: { $gt: createdAt } }, { createdAt, workspaceId: { $gt: "ws_a" } }] });
 });

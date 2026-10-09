@@ -1,10 +1,11 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-const m = vi.hoisted(() => ({ env: vi.fn(), workspace: vi.fn(), workspaces: vi.fn(), run: vi.fn(), session: vi.fn(), messages: vi.fn(), read: vi.fn(), settle: vi.fn(), subscribe: vi.fn(), prompt: vi.fn(), task: vi.fn(), createTask: vi.fn(), createRun: vi.fn(), createSession: vi.fn(), claim: vi.fn(), ready: vi.fn() }));
+const m = vi.hoisted(() => ({ env: vi.fn(), workspace: vi.fn(), workspaces: vi.fn(), run: vi.fn(), session: vi.fn(), messages: vi.fn(), read: vi.fn(), settle: vi.fn(), subscribe: vi.fn(), prompt: vi.fn(), task: vi.fn(), createTask: vi.fn(), createRun: vi.fn(), createSession: vi.fn(), claim: vi.fn(), ready: vi.fn(), deleteTask: vi.fn() }));
 vi.mock("@/config/env", () => ({ getServerEnvironment: m.env }));
 vi.mock("@/lib/database/mongodb", () => ({ connectMongo: vi.fn() }));
 vi.mock("@/models/workspace", () => ({ WorkspaceModel: { findOne: m.workspace, find: m.workspaces } }));
 vi.mock("@/models/run", () => ({ RunModel: { findOne: m.run } }));
+vi.mock("@/models/task", () => ({ TaskModel: { deleteOne: m.deleteTask } }));
 vi.mock("@/framework/core/runtime/runner", () => ({ defaultStore: { getSession: m.session, getMessages: m.messages }, createFrameworkSession: m.createSession }));
 vi.mock("@/framework/server/context", () => ({ getFrameworkRunner: () => ({ prompt: m.prompt }) }));
 vi.mock("@/lib/memory/run-state", () => ({ readMemoryRunState: m.read, settleStaleRetention: m.settle }));
@@ -57,6 +58,7 @@ it("arbitrates two first messages when each creates a different Task", async () 
  expect(responses.map(response => response.status).sort()).toEqual([202, 409]);
  expect(m.createTask).toHaveBeenCalledTimes(2);
  expect(m.prompt).toHaveBeenCalledTimes(1);
+ expect(m.deleteTask).toHaveBeenCalledExactlyOnceWith({ taskId: "task_b", status: "draft", activeRunId: null, latestRunId: null });
 });
 it("does not disguise an unrelated duplicate key as an active-Run conflict", async () => { m.run.mockReturnValue(chain(null)); m.createRun.mockRejectedValue(Object.assign(new Error("duplicate id"), { code: 11000, keyPattern: { runId: 1 } })); await expect(POST(req("", "secret", body), ctx)).rejects.toThrow("duplicate id"); expect(m.prompt).not.toHaveBeenCalled(); });
 it.each([{ userId, prompt: " " }, { userId: "invalid", prompt: "x" }, { userId, prompt: "x", extra: true }])("rejects malformed body", async body => { expect((await POST(req("", "secret", body), ctx)).status).toBe(400); });

@@ -8,6 +8,7 @@ import { createRunForTask, createTaskForSession, taskForSession } from "@/lib/ta
 import { isWorkosServiceAuthorized, isWorkosUserId } from "@/lib/workos-service-auth";
 import { getOwnedWorkosSession } from "@/lib/workos-session-access";
 import { RunModel } from "@/models/run";
+import { TaskModel } from "@/models/task";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
   if (!await ensureActiveSessionRunIndex()) return NextResponse.json({ error: "SERVICE_UNAVAILABLE" }, { status: 503 });
   const active = await RunModel.findOne({ sessionId, userId, workspaceId: session.workspaceId, active: true }).sort({ createdAt: -1 }).lean();
   if (active) return NextResponse.json({ error: "ACTIVE_RUN_CONFLICT" }, { status: 409 });
-  const task = await taskForSession(sessionId) ?? await createTaskForSession({ session, goal: prompt, source: "api" });
+  const existingTask = await taskForSession(sessionId);
+  const task = existingTask ?? await createTaskForSession({ session, goal: prompt, source: "api" });
   const candidateRunId = `run_${randomUUID().replaceAll("-", "").slice(0, 20)}`;
   let run;
   try {
@@ -36,6 +38,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
     if (typeof error === "object" && error !== null && "code" in error && error.code === 11000 &&
       "keyPattern" in error && typeof error.keyPattern === "object" && error.keyPattern !== null &&
       "sessionId" in error.keyPattern && "active" in error.keyPattern) {
+      if (!existingTask) {
+        // This request created a draft Task but lost the unique active-session
+        // Run race. It has no Run; remove only that untouched draft projection.
+        await TaskModel.deleteOne({ taskId: task.taskId, status: "draft", activeRunId: null, latestRunId: null });
+      }
       return NextResponse.json({ error: "ACTIVE_RUN_CONFLICT" }, { status: 409 });
     }
     throw error;

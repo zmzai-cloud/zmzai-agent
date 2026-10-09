@@ -50,6 +50,7 @@ describe("recallMemoryContext", () => {
     expect(receipts[0]).toMatchObject({ bankId: "ws_1", status: "hit" });
     const preview = (receipts[0] as { hits: Array<{ memoryId: string; text: string }> }).hits;
     expect(preview).toHaveLength(8);
+    expect((receipts[0] as { usedHitCount: number }).usedHitCount).toBeGreaterThan(8);
     expect(preview.map((hit) => hit.memoryId)).toEqual(hits.slice(0, 8).map((hit) => hit.memoryId));
     expect(preview.every((hit) => hit.text.length <= 240 && context!.includes(hit.text))).toBe(true);
     expect(provider.recall).toHaveBeenCalledTimes(1);
@@ -83,7 +84,7 @@ describe("recallMemoryContext", () => {
   it("distinguishes empty, unavailable, disabled, and thrown recall", async () => {
     const receipt = vi.fn();
     await recallMemoryContext(session, "q", fakeProvider(vi.fn().mockResolvedValue([])), receipt);
-    expect(receipt).toHaveBeenLastCalledWith({ bankId: "ws_1", status: "empty", hits: [] });
+    expect(receipt).toHaveBeenLastCalledWith({ bankId: "ws_1", status: "empty", hits: [], usedHitCount: 0 });
     await recallMemoryContext(session, "q", fakeProvider(vi.fn().mockResolvedValue(null)), receipt);
     expect(receipt).toHaveBeenLastCalledWith({ bankId: "ws_1", status: "unavailable", hits: [] });
     await recallMemoryContext(session, "q", fakeProvider(vi.fn().mockRejectedValue(new Error("secret fact"))), receipt);

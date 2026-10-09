@@ -7,6 +7,7 @@ export type MemoryRecallReceipt = {
   bankId: string;
   status: "hit" | "empty" | "unavailable" | "disabled";
   hits: Array<{ memoryId?: string; text: string }>;
+  usedHitCount?: number;
 };
 
 function boundedPreviews(hits: readonly MemoryRecallHit[], usedFacts: readonly string[]): MemoryRecallReceipt["hits"] {
@@ -43,6 +44,7 @@ export async function recallMemoryContext(
           bankId: session.workspaceId,
           status: formatted.usedFacts.length ? "hit" : "empty",
           hits: boundedPreviews(usableFacts, formatted.usedFacts),
+          usedHitCount: formatted.usedFacts.length,
         };
       }
     }

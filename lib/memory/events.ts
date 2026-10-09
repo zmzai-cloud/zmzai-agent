@@ -5,7 +5,7 @@ import { compareAndSetRetention, writeMemoryRunState, type MemoryHitPreview, typ
 
 const hitSchema = z.strictObject({ memoryId: z.string().optional(), text: z.string() });
 const memoryEventSchemas = {
-  "memory.recall_succeeded": z.strictObject({ hits: z.array(hitSchema) }),
+  "memory.recall_succeeded": z.strictObject({ hits: z.array(hitSchema), usedHitCount: z.number().int().min(0).optional() }),
   "memory.recall_unavailable": z.strictObject({}),
   "memory.recall_disabled": z.strictObject({}),
   "memory.retention_pending": z.strictObject({}),
@@ -47,12 +47,12 @@ function boundedHits(hits: z.infer<typeof hitSchema>[]): MemoryHitPreview[] {
   }));
 }
 
-function parsePayload(type: MemoryEventType, payload: object): { hits?: MemoryHitPreview[] } {
+function parsePayload(type: MemoryEventType, payload: object): { hits?: MemoryHitPreview[]; usedHitCount?: number } {
   const schema = memoryEventSchemas[type] as z.ZodType;
   if (!schema) throw new Error(`INVALID_MEMORY_EVENT: ${type}`);
   const result = schema.safeParse(payload);
   if (!result.success) throw new Error(`INVALID_MEMORY_EVENT: ${type}`);
-  return result.data as { hits?: MemoryHitPreview[] };
+  return result.data as { hits?: MemoryHitPreview[]; usedHitCount?: number };
 }
 
 export async function recordMemoryEvent(input: {
@@ -69,15 +69,17 @@ export async function recordMemoryEvent(input: {
   let change: Parameters<typeof writeMemoryRunState>[0]["change"];
   if (type === "memory.recall_succeeded") {
     const hits = boundedHits(payload.hits ?? []);
-    change = { kind: "recall", status: hits.length > 0 ? "hit" : "empty", hits };
+    const usedHitCount = payload.usedHitCount ?? payload.hits?.length ?? 0;
+    if (usedHitCount < hits.length) throw new Error("INVALID_MEMORY_EVENT: usedHitCount");
+    change = { kind: "recall", status: usedHitCount > 0 ? "hit" : "empty", hits, usedHitCount };
   } else if (type === "memory.recall_unavailable" || type === "memory.recall_disabled") {
-    change = { kind: "recall", status: type === "memory.recall_disabled" ? "disabled" : "unavailable", hits: [] };
+    change = { kind: "recall", status: type === "memory.recall_disabled" ? "disabled" : "unavailable", hits: [], usedHitCount: 0 };
   } else {
     change = { kind: "retention", status: type.slice("memory.retention_".length) as MemoryRunState["retention"]["status"] };
   }
   const state = await writeMemoryRunState({ runId, sessionId, bankId, change, at });
   const data = change.kind === "recall"
-    ? { runId, bankId, status: state.recall.status, hitCount: state.recall.hits.length, observedAt: state.recall.observedAt }
+    ? { runId, bankId, status: state.recall.status, hitCount: state.recall.usedHitCount, observedAt: state.recall.observedAt }
     : { runId, bankId, status: state.retention.status, updatedAt: state.retention.updatedAt };
   const persisted = await appendMemoryEventToMongo({ sessionId, type, data });
   notifyEventLogListeners(persisted);
