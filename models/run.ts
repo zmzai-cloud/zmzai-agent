@@ -24,6 +24,9 @@ const runSchema = new Schema(
 );
 
 runSchema.index({ taskId: 1, active: 1 }, { unique: true, partialFilterExpression: { active: true } });
+// A session can have only one active Run even if concurrent first prompts
+// created different Tasks before either request wrote its Run.
+runSchema.index({ sessionId: 1, active: 1 }, { unique: true, partialFilterExpression: { active: true } });
 runSchema.index({ taskId: 1, createdAt: -1 });
 runSchema.index({ sessionId: 1, createdAt: -1 });
 runSchema.index({ workspaceId: 1, userId: 1, createdAt: -1 });

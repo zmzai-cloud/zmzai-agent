@@ -37,4 +37,22 @@ it.each(["other-user", "member-only"])("rejects %s continuation", async kind => 
 it("rejects active runs without queuing another prompt", async () => { m.run.mockReturnValue(chain({ ...run, active: true, status: "running" })); expect((await POST(req("", "secret", body), ctx)).status).toBe(409); expect(m.prompt).not.toHaveBeenCalled(); });
 it("creates a new run and dispatches the prompt", async () => { m.run.mockReturnValue(chain(null)); const response = await POST(req("", "secret", body), ctx); expect(response.status).toBe(202); expect(await response.json()).toMatchObject({ runId: expect.any(String), status: "queued" }); expect(m.prompt).toHaveBeenCalledWith("ses_1", { text: "Continue" }); });
 it("rejects a concurrent winner instead of dispatching twice", async () => { m.run.mockReturnValue(chain(null)); m.createRun.mockResolvedValue({ ...run, runId: "run_winner" }); expect((await POST(req("", "secret", body), ctx)).status).toBe(409); expect(m.prompt).not.toHaveBeenCalled(); });
+it("arbitrates two first messages when each creates a different Task", async () => {
+ m.run.mockReturnValue(chain(null));
+ m.task.mockResolvedValue(null);
+ let arrivals = 0;
+ let releaseBoth!: () => void;
+ const bothAtRunCreation = new Promise<void>(resolve => { releaseBoth = resolve; });
+ m.createTask.mockImplementationOnce(async () => ({ taskId: "task_a" })).mockImplementationOnce(async () => ({ taskId: "task_b" }));
+ m.createRun.mockImplementation(async ({ task, runIdOverride }) => {
+   if (++arrivals === 2) releaseBoth();
+   await bothAtRunCreation;
+   if (task.taskId === "task_b") throw Object.assign(new Error("duplicate active session"), { code: 11000 });
+   return { ...run, runId: runIdOverride, taskId: task.taskId, active: true };
+ });
+ const responses = await Promise.all([POST(req("", "secret", body), ctx), POST(req("", "secret", body), ctx)]);
+ expect(responses.map(response => response.status).sort()).toEqual([202, 409]);
+ expect(m.createTask).toHaveBeenCalledTimes(2);
+ expect(m.prompt).toHaveBeenCalledTimes(1);
+});
 it.each([{ userId, prompt: " " }, { userId: "invalid", prompt: "x" }, { userId, prompt: "x", extra: true }])("rejects malformed body", async body => { expect((await POST(req("", "secret", body), ctx)).status).toBe(400); });

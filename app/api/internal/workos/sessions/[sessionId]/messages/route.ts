@@ -25,7 +25,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
   if (active) return NextResponse.json({ error: "ACTIVE_RUN_CONFLICT" }, { status: 409 });
   const task = await taskForSession(sessionId) ?? await createTaskForSession({ session, goal: prompt, source: "api" });
   const candidateRunId = `run_${randomUUID().replaceAll("-", "").slice(0, 20)}`;
-  const run = await createRunForTask({ task, session, runIdOverride: candidateRunId });
+  let run;
+  try {
+    run = await createRunForTask({ task, session, runIdOverride: candidateRunId });
+  } catch (error) {
+    // The unique active-session Run index also arbitrates first messages
+    // whose concurrent requests created different Tasks.
+    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
+      return NextResponse.json({ error: "ACTIVE_RUN_CONFLICT" }, { status: 409 });
+    }
+    throw error;
+  }
   // The unique active-run index arbitrates requests that passed the first read
   // concurrently. Only the caller whose candidate won may dispatch a prompt.
   if (run.runId !== candidateRunId) return NextResponse.json({ error: "ACTIVE_RUN_CONFLICT" }, { status: 409 });
