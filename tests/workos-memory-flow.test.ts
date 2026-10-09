@@ -78,7 +78,7 @@ vi.mock("@/models/workspace", () => ({ WorkspaceModel: { findOne: (query: { work
 vi.mock("@/models/run", () => ({ RunModel: {
   exists: async () => false,
   findOne: (query: { runId?: string; sessionId?: string; workspaceId?: string; userId: string }) => {
-    const result = [...fixture.runs.values()].find((run) => run.userId === query.userId &&
+    const result = [...fixture.runs.values()].reverse().find((run) => run.userId === query.userId &&
       (query.runId === undefined || run.runId === query.runId) &&
       (query.sessionId === undefined || run.sessionId === query.sessionId) &&
       (query.workspaceId === undefined || run.workspaceId === query.workspaceId)) ?? null;
@@ -156,7 +156,6 @@ afterEach(() => {
 describe("WorkOS Memory release flow", () => {
   it("retains in owner A's bank, recalls on a later turn, and isolates owner B's bank and route", async () => {
     const first = register(ownerA, "ws_a", "ses_a", "run_a1");
-    const second = register(ownerA, "ws_a", "ses_a2", "run_a2");
     const other = register(ownerB, "ws_b", "ses_b", "run_b1");
     beginMemoryAttempt(first.id, "run_a1");
     await createMemoryRetainHook().onRunEnd!({ sessionId: first.id, workspaceId: first.workspaceId, agent: "default", ok: true, aborted: false,
@@ -166,10 +165,14 @@ describe("WorkOS Memory release flow", () => {
     const retained = await (await read("ses_a", ownerA)).json();
     expect(retained.memory.retention.status).toBe("succeeded");
 
-    const secondTurn = await recall(second, "run_a2");
+    // Continuing the same conversation creates a later Run, not a new session.
+    const continued = register(ownerA, "ws_a", first.id, "run_a2");
+    const secondTurn = await recall(continued, "run_a2");
     expect(secondTurn.context).toContain(fact);
     expect(secondTurn.receipt?.status).toBe("hit");
-    const secondBody = await (await read("ses_a2", ownerA)).json();
+    const secondBody = await (await read(first.id, ownerA)).json();
+    expect(secondBody.session.id).toBe(first.id);
+    expect(secondBody.latestRun.runId).toBe("run_a2");
     expect(secondBody.memory.recall.status).toBe("hit");
     expect(secondBody.memory.recall.hits[0].text).toContain(fact);
     expect(secondBody.memory.retention.status).toBe("not_started");
@@ -181,7 +184,7 @@ describe("WorkOS Memory release flow", () => {
     const otherUserRun = await readRun("run_a2", ownerB);
     expect(otherUserRun.status).toBe(404);
     expect(await otherUserRun.text()).not.toContain(fact);
-    expect((await read("ses_a2", ownerB)).status).toBe(404);
+    expect((await read(first.id, ownerB)).status).toBe(404);
   });
 
   it.each(["down", "zero hits", "retained timeout", "empty transcript", "disabled"] as const)("reports %s truthfully", async (scenario) => {
