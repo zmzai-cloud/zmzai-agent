@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getFrameworkRunner } from "@/framework/server/context";
 import { connectMongo } from "@/lib/database/mongodb";
+import { ensureActiveSessionRunIndex } from "@/lib/active-session-run-index";
 import { createRunForTask, createTaskForSession, taskForSession } from "@/lib/task-run-control";
 import { isWorkosServiceAuthorized, isWorkosUserId } from "@/lib/workos-service-auth";
 import { getOwnedWorkosSession } from "@/lib/workos-session-access";
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
   const { sessionId } = await context.params;
   const session = await getOwnedWorkosSession(sessionId, userId);
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
+  if (!await ensureActiveSessionRunIndex()) return NextResponse.json({ error: "SERVICE_UNAVAILABLE" }, { status: 503 });
   const active = await RunModel.findOne({ sessionId, userId, workspaceId: session.workspaceId, active: true }).sort({ createdAt: -1 }).lean();
   if (active) return NextResponse.json({ error: "ACTIVE_RUN_CONFLICT" }, { status: 409 });
   const task = await taskForSession(sessionId) ?? await createTaskForSession({ session, goal: prompt, source: "api" });
@@ -31,7 +33,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
   } catch (error) {
     // The unique active-session Run index also arbitrates first messages
     // whose concurrent requests created different Tasks.
-    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000 &&
+      "keyPattern" in error && typeof error.keyPattern === "object" && error.keyPattern !== null &&
+      "sessionId" in error.keyPattern && "active" in error.keyPattern) {
       return NextResponse.json({ error: "ACTIVE_RUN_CONFLICT" }, { status: 409 });
     }
     throw error;
