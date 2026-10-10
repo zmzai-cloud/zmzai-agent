@@ -114,7 +114,10 @@ describe("subscribeFrameworkEvents", () => {
     })();
     await new Promise((resolve) => setTimeout(resolve, 20));
     await publishFrameworkEvent({ sessionId: "ses_abort", type: "session.status", data: { status: "running" } });
+    // 0.17.3 语义：在途事件先送达，abort 即刻停止且不再冲刷后续队列。
+    await new Promise((resolve) => setTimeout(resolve, 30));
     controller.abort();
+    await publishFrameworkEvent({ sessionId: "ses_abort", type: "session.status", data: { status: "idle" } });
     await done;
     expect(seen).toEqual([1]);
   });

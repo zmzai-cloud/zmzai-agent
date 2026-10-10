@@ -11,6 +11,7 @@ import { activeRunIdForSession } from "@/lib/task-run-control";
 import { FrameworkSessionModel } from "@/framework/core/session/mongo-models";
 import { defaultRelayModel, getWorkspace } from "@/lib/workspaces";
 import { resolveWorkspaceConnectorTools } from "@/lib/mcp-connector-tools";
+import { resolveWorkosDomainTools } from "@/lib/workos-domain-tools";
 import { combineAgentInstructions } from "@/lib/project-agent-context";
 import { getWorkspaceSkillsByIds } from "@/lib/workspace-skills";
 import { getWorkspacePluginSkillsByIds } from "@/lib/workspace-plugins";
@@ -130,6 +131,10 @@ function getOrCreateRunner(): SessionRunner {
         // 自治档位：auto 档在 workspace 规则前预置 bash 放行；排在后面（last-match-wins）
         // 的显式规则仍可覆盖它，deny/ask 不被绕过。"always" 是历史值，等同 ask。
         const autoAllow: Ruleset = ws.approvalMode === "auto" ? [{ permission: "bash", pattern: "*", action: "allow" }] : [];
+        // 框架内置基线含 "*": "allow" 通配（registry.ts builtinDefaults）——自定义
+        // workos 权限类若不显式声明，改写用户笔记/待办会被通配吞掉免审批直接执行。
+        // 显式置 ask 放在 autoAllow 之前：workspace 显式规则（last-match-wins）仍可覆盖。
+        const workosAsk: Ruleset = [{ permission: "workos", pattern: "*", action: "ask" }];
         return {
           agent: {
             name: ws.name || "default",
@@ -138,9 +143,11 @@ function getOrCreateRunner(): SessionRunner {
             model: { providerId: "relay", modelId: ws.defaultModel },
             prompt: combineAgentInstructions(ws.prompt, project?.instructions, projectContext, knowledgeBase, [...skills, ...pluginSkills]),
             steps: ws.steps,
-            permission: [...autoAllow, ...(ws.permission as Ruleset)],
+            permission: [...workosAsk, ...autoAllow, ...(ws.permission as Ruleset)],
           },
-          tools: await resolveWorkspaceConnectorTools({ userId: session.userId, workspaceId: session.workspaceId, connectorIds: ws.connectorIds }),
+          // 个人工作空间领域工具（笔记/待办）随 workspace 会话注册：创建免审批
+          //（模型只在用户明确要求时调用），改写走 permission=workos 默认 ask。
+          tools: [...(await resolveWorkspaceConnectorTools({ userId: session.userId, workspaceId: session.workspaceId, connectorIds: ws.connectorIds })), ...resolveWorkosDomainTools()],
         };
       },
     },

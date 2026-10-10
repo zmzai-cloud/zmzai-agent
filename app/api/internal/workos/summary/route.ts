@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   ]);
   const taskIds = tasks.map((task) => task.taskId);
   const runs = taskIds.length
-    ? await RunModel.find({ taskId: { $in: taskIds } }).sort({ createdAt: -1 }).select({ taskId: 1, status: 1, createdAt: 1 }).lean()
+    ? await RunModel.find({ taskId: { $in: taskIds } }).sort({ createdAt: -1 }).select({ taskId: 1, sessionId: 1, status: 1, createdAt: 1 }).lean()
     : [];
   const latestRun = new Map<string, (typeof runs)[number]>();
   for (const run of runs) if (!latestRun.has(run.taskId)) latestRun.set(run.taskId, run);
@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
           workspaceId: task.workspaceId,
           updatedAt: task.updatedAt instanceof Date ? task.updatedAt.toISOString() : String(task.updatedAt),
           runStatus: run?.status ?? null,
+          sessionId: run?.sessionId ?? null,
           attention,
         };
       }),

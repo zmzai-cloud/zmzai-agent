@@ -67,9 +67,9 @@ export const mongoEventLog: EventLog = {
       sessionId: record.sessionId,
       seq: record.seq,
       type: record.type as FrameworkEventType,
-      data: record.data as never,
+      data: record.data as PersistedFrameworkEvent["data"],
       at: record.at.toISOString(),
-    }));
+    })) as PersistedFrameworkEvent[];
   },
   async count(sessionId) {
     return FrameworkEventModel.countDocuments({ sessionId });

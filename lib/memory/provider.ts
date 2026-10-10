@@ -48,8 +48,17 @@ export interface HindsightLike {
   listMemories(bankId: string, options: { limit: number }): Promise<{ total: number }>;
 }
 
-export const RECALL_TIMEOUT_MS = 800;
-export const RETAIN_TIMEOUT_MS = 5_000;
+/** 超时可经环境变量放宽（本地开发走 SSH 隧道连 HK hindsight 时，
+ *  单程 RTT ~300ms，800ms 默认预算不够）。生产默认保持紧凑值。 */
+function envTimeoutMs(name: string, fallbackMs: number): number {
+  const raw = process.env[name];
+  if (!raw || !/^\d+$/.test(raw)) return fallbackMs;
+  const value = Number(raw);
+  return value >= 100 && value <= 120_000 ? value : fallbackMs;
+}
+
+export const RECALL_TIMEOUT_MS = envTimeoutMs("HINDSIGHT_RECALL_TIMEOUT_MS", 800);
+export const RETAIN_TIMEOUT_MS = envTimeoutMs("HINDSIGHT_RETAIN_TIMEOUT_MS", 5_000);
 /** recall 请求的 token 预算（hindsight SDK 无 maxFacts 参数，用 token 预算 + slice 控制）。 */
 export const RECALL_MAX_TOKENS = 2_000;
 export const RECALL_DEFAULT_MAX_FACTS = 12;
