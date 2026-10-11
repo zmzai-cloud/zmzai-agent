@@ -71,7 +71,7 @@ pnpm test
 
 自动记忆以 Workspace ID 作为 Hindsight bank ID。每轮先按用户输入召回，再在终态将本轮新增的用户与助手消息交给同一个 bank。召回无结果记为 `empty`，服务不可达记为 `unavailable`；两种情况都不阻断对话。Hindsight 确认收到沉淀请求才记为 `succeeded`，明确拒绝记为 `failed`，请求超时记为 `unknown`。空 transcript 记为 `skipped`，未启用记为 `disabled`。
 
-Run 的 `pending` 沉淀回执若在 10 秒后仍未完成，会在经授权的会话读取时转为 `unknown`。由于 Hindsight 没有此写入路径可用的幂等键，系统不会自动重试或把超时推断为成功。重启后持久化回执仍可读取；没有可靠 Run 绑定的终态回调不会猜测一个已有产品 Run。事实的编辑和删除在 Memory Center 完成，WorkOS 只展示当前 Run 的摘要与入口。
+Run 的 `pending` 沉淀回执在请求预算加 5 秒后仍未完成（至少等待 10 秒），会在经授权的会话读取时转为 `unknown`。`HINDSIGHT_RECALL_TIMEOUT_MS` 和 `HINDSIGHT_RETAIN_TIMEOUT_MS` 分别控制召回、沉淀请求预算；香港生产当前使用 5000ms 和 15000ms，因此 pending 回执等待 20 秒，避免在请求完成前提前判为未知。Run 终态后尚未启动的沉淀仍保留 10 秒宽限。系统不会自动重试或把超时推断为成功。重启后持久化回执仍可读取；没有可靠 Run 绑定的终态回调不会猜测一个已有产品 Run。事实的编辑和删除在 Memory Center 完成，WorkOS 只展示当前 Run 的摘要与入口。
 
 本地测试使用注入的假 Hindsight 客户端与 owner Workspace 固定数据，不连接真实 bank，也不复制生产事实。仅有本地 SQLite 的预览环境不能访问生产 Memory。
 

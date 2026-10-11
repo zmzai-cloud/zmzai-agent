@@ -35,6 +35,39 @@ describe("noop memory provider", () => {
 });
 
 describe("hindsight memory provider", () => {
+  it("cancels successful request deadlines without false timeout warnings", async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const provider = createHindsightMemoryProvider({ apiUrl: "http://localhost", clientFactory: () => makeClient() });
+      await provider.ensureBank("ws_fast");
+      await provider.recall({ bankId: "ws_fast", query: "q" });
+      await provider.status("ws_fast");
+      await provider.deleteBank("ws_fast");
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(RETAIN_TIMEOUT_MS + RECALL_TIMEOUT_MS);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("degrades a synchronous client failure without leaving a deadline", async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const provider = createHindsightMemoryProvider({ apiUrl: "http://localhost", clientFactory: () => makeClient({ recall: () => { throw new Error("private query"); } }) });
+      await expect(provider.recall({ bankId: "ws_sync", query: "private query" })).resolves.toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain("private query");
+    } finally {
+      warnSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it("normalizes structured recall results, preserves supplied IDs and order, and slices to maxFacts", async () => {
     const client = makeClient({
       recall: vi.fn().mockResolvedValue({ results: Array.from({ length: 20 }, (_, index) => ({ id: `mem_${index}`, text: ` f${index} `, scores: { final: index / 20 } })) }),
