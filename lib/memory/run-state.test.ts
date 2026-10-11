@@ -128,4 +128,24 @@ describe("memory Run receipts", () => {
     expect(await compareAndSetRetention({ ...identity, from: "not_started", to: "pending", at: new Date("2026-10-08T10:00:20Z") })).toBeNull();
     expect((await readMemoryRunState("run_once"))?.retention.status).toBe("unknown");
   });
+
+  it("allows a configured long request to finish before stale reconciliation", async () => {
+    vi.stubEnv("HINDSIGHT_RETAIN_TIMEOUT_MS", "15000");
+    vi.resetModules();
+    try {
+      const state = await import("@/lib/memory/run-state");
+      const identity = { runId: "run_long", sessionId: "ses_long", bankId: "ws_long" };
+      await state.compareAndSetRetention({ ...identity, from: "not_started", to: "pending", at: new Date("2026-10-08T10:00:00Z") });
+      expect((await state.settleStaleRetention(identity.runId, new Date("2026-10-08T10:00:12Z"))).retention.status).toBe("pending");
+      expect((await state.compareAndSetRetention({ ...identity, from: "pending", to: "succeeded", at: new Date("2026-10-08T10:00:14Z") }))?.retention.status).toBe("succeeded");
+      expect((await state.settleStaleRetention(identity.runId, new Date("2026-10-08T10:00:21Z"))).retention.status).toBe("succeeded");
+      const interrupted = { ...identity, runId: "run_interrupted" };
+      await state.compareAndSetRetention({ ...interrupted, from: "not_started", to: "pending", at: new Date("2026-10-08T10:00:00Z") });
+      expect((await state.settleStaleRetention(interrupted.runId, new Date("2026-10-08T10:00:19Z"))).retention.status).toBe("pending");
+      expect((await state.settleStaleRetention(interrupted.runId, new Date("2026-10-08T10:00:20Z"))).retention.status).toBe("unknown");
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
 });

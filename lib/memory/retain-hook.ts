@@ -40,7 +40,7 @@ export function createMemoryRetainHook(): LifecycleHook {
         if (!(await publish("memory.retention_pending", "not_started"))) return;
         if (runId) {
           // The pending append can be delayed beyond the stale threshold.
-          // Refresh its CAS lease before sending a five-second request.
+          // Refresh its CAS lease before sending the configured retain request.
           const stillPending = await compareAndSetRetention({
             runId, sessionId: input.sessionId, bankId: input.workspaceId!,
             from: "pending", to: "pending", at: new Date(),

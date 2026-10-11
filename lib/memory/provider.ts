@@ -59,6 +59,8 @@ function envTimeoutMs(name: string, fallbackMs: number): number {
 
 export const RECALL_TIMEOUT_MS = envTimeoutMs("HINDSIGHT_RECALL_TIMEOUT_MS", 800);
 export const RETAIN_TIMEOUT_MS = envTimeoutMs("HINDSIGHT_RETAIN_TIMEOUT_MS", 5_000);
+/** Leave time to persist the outcome before treating an interrupted request as stale. */
+export const RETENTION_STALE_MS = Math.max(10_000, RETAIN_TIMEOUT_MS + 5_000);
 /** recall 请求的 token 预算（hindsight SDK 无 maxFacts 参数，用 token 预算 + slice 控制）。 */
 export const RECALL_MAX_TOKENS = 2_000;
 export const RECALL_DEFAULT_MAX_FACTS = 12;
@@ -82,22 +84,22 @@ async function withTimeout<T>(
 ): Promise<T> {
   const controller = new AbortController();
   let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeoutMs);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      warn(`${operation} timed out after ${timeoutMs}ms`, bankId);
+      resolve(fallback);
+    }, timeoutMs);
+  });
   try {
     return await Promise.race([
-      run(controller.signal).catch(() => {
+      Promise.resolve().then(() => run(controller.signal)).catch(() => {
         if (!timedOut) warn(operation, bankId);
         return fallback;
       }),
-      new Promise<T>((resolve) =>
-        setTimeout(() => {
-          warn(`${operation} timed out after ${timeoutMs}ms`, bankId);
-          resolve(fallback);
-        }, timeoutMs),
-      ),
+      timeout,
     ]);
   } finally {
     clearTimeout(timer);

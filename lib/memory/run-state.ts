@@ -1,6 +1,7 @@
 import { MemoryRunStateModel, type MemoryRunStateRecord } from "@/models/memory-run-state";
 import { notifyEventLogListeners } from "@zmzai/agent-framework";
 import { appendMemoryEventToMongo } from "@/framework/core/events/mongo-event-log";
+import { RETENTION_STALE_MS } from "@/lib/memory/provider";
 
 export type MemoryHitPreview = { memoryId?: string; text: string };
 export type MemoryRunState = {
@@ -76,7 +77,7 @@ export async function compareAndSetRetention(input: {
 
 /** Reconcile a receipt left pending by a crash or an interrupted retain request. */
 export async function settleStaleRetention(runId: string, now: Date, terminalSince?: Date | null): Promise<MemoryRunState> {
-  const cutoff = new Date(now.getTime() - 10_000);
+  const cutoff = new Date(now.getTime() - RETENTION_STALE_MS);
   let changed = await MemoryRunStateModel.findOneAndUpdate(
     { runId, "retention.status": "pending", "retention.updatedAt": { $lte: cutoff } },
     { $set: { "retention.status": "unknown", "retention.updatedAt": now } },
@@ -85,7 +86,7 @@ export async function settleStaleRetention(runId: string, now: Date, terminalSin
   // A process may die after the product Run becomes terminal but before the
   // unawaited onRunEnd hook starts. Only the persisted terminal timestamp can
   // establish that this not_started receipt is stale; never retry retain here.
-  if (!changed && terminalSince && terminalSince <= cutoff) {
+  if (!changed && terminalSince && terminalSince <= new Date(now.getTime() - 10_000)) {
     changed = await MemoryRunStateModel.findOneAndUpdate(
       { runId, "retention.status": "not_started" },
       { $set: { "retention.status": "unknown", "retention.updatedAt": now } },
