@@ -161,7 +161,7 @@ export const workosUpdateNoteTool: ToolDef = {
   id: "workos_update_note",
   label: "工作空间 · 改写笔记",
   description:
-    "改写用户工作空间里已有的一篇笔记（传完整的新 Markdown 正文）。这会覆盖笔记内容，必须先征得用户确认后才会执行；" +
+    "提交用户工作空间里已有笔记的改写提议（传完整的新 Markdown 正文）。调用后系统会显示确认卡片，用户批准前不会写入；请直接提交提议，不要用重复口头确认代替系统确认卡片。" +
     "改写前先用 workos_read_note 读取最新版本，将该版本的 revision 原样传入 expectedRevision；若冲突，重新读取并生成新提议。未经用户要求不要调用。",
   parameters: z.object({
     noteId: z.string().min(1).max(80),
@@ -190,7 +190,7 @@ export const workosUpdateTodoTool: ToolDef = {
   id: "workos_update_todo",
   label: "工作空间 · 更新待办",
   description:
-    "更新用户工作空间里的一条待办（todoId 形如 todo_xxx）：可改标题、说明、截止时间或完成状态。会改动用户数据，需用户确认后执行。",
+    "提交用户工作空间里一条待办的更新提议（todoId 形如 todo_xxx）：可改标题、说明、截止时间或完成状态。调用后系统显示确认卡片，用户批准前不会写入；不要重复要求口头确认。",
   parameters: z.object({
     todoId: z.string().min(1).max(80),
     title: z.string().min(1).max(240).optional(),
