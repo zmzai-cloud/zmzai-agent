@@ -38,12 +38,24 @@ it("registers the five domain tools with creation free of approval", () => {
 
 it("update tools map to an ask-class permission carrying the proposal args", () => {
   const notePermission = workosUpdateNoteTool.permission!({ noteId: "note_1", markdown: "新正文", expectedRevision: 4 });
-  expect(notePermission).toMatchObject({ permission: "workos", patterns: ["update_note:note_1"] });
+  expect(notePermission).toMatchObject({ permission: "workos", patterns: [expect.stringMatching(/^update_note:note_1:[a-f0-9]{64}$/)] });
   expect(notePermission!.metadata).toMatchObject({ action: "update_note", noteId: "note_1", markdown: "新正文", expectedRevision: 4 });
 
   const todoPermission = workosUpdateTodoTool.permission!({ todoId: "todo_1", status: "done" });
-  expect(todoPermission).toMatchObject({ permission: "workos", patterns: ["update_todo:todo_1"] });
+  expect(todoPermission).toMatchObject({ permission: "workos", patterns: [expect.stringMatching(/^update_todo:todo_1:[a-f0-9]{64}$/)] });
   expect(todoPermission!.metadata).toMatchObject({ action: "update_todo", todoId: "todo_1", status: "done" });
+});
+
+it("binds note approval to both the revision and proposed content", () => {
+  const proposal = { noteId: "note_1", markdown: "新正文", expectedRevision: 4 };
+  const patterns = workosUpdateNoteTool.permission!(proposal)!.patterns;
+  expect(workosUpdateNoteTool.permission!({ ...proposal })!.patterns).toEqual(patterns);
+  expect(workosUpdateNoteTool.permission!({ ...proposal, expectedRevision: 5 })!.patterns).not.toEqual(patterns);
+  expect(workosUpdateNoteTool.permission!({ ...proposal, markdown: "其他改写" })!.patterns).not.toEqual(patterns);
+  expect(workosUpdateNoteTool.permission!({ ...proposal, title: "新标题" })!.patterns).not.toEqual(patterns);
+  expect(workosUpdateTodoTool.permission!({ todoId: "todo_1", status: "open" })!.patterns).not.toEqual(
+    workosUpdateTodoTool.permission!({ todoId: "todo_1", status: "done" })!.patterns,
+  );
 });
 
 it("create_note posts an idempotent action and surfaces the noteId", async () => {

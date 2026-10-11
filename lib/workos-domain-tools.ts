@@ -1,4 +1,5 @@
 import type { ToolDef } from "@zmzai/agent-framework";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { getServerEnvironment } from "@/config/env";
@@ -171,7 +172,7 @@ export const workosUpdateNoteTool: ToolDef = {
   }),
   permission: (args) => ({
     permission: "workos",
-    patterns: [`update_note:${args.noteId}`],
+    patterns: [`update_note:${args.noteId}:${createHash("sha256").update(JSON.stringify([args.expectedRevision, args.title ?? null, args.markdown])).digest("hex")}`],
     metadata: { action: "update_note", noteId: args.noteId, title: args.title ?? null, markdown: args.markdown, expectedRevision: args.expectedRevision },
   }),
   executionMode: "sequential",
@@ -200,7 +201,7 @@ export const workosUpdateTodoTool: ToolDef = {
   }),
   permission: (args) => ({
     permission: "workos",
-    patterns: [`update_todo:${args.todoId}`],
+    patterns: [`update_todo:${args.todoId}:${createHash("sha256").update(JSON.stringify([args.title ?? null, args.description ?? null, args.dueAt ?? null, args.status ?? null])).digest("hex")}`],
     metadata: { action: "update_todo", ...args },
   }),
   executionMode: "sequential",
