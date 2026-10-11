@@ -28,7 +28,7 @@ const environmentSchema = z.object({
   WORKOS_SERVICE_SECRET_CURRENT: serviceSecret,
   WORKOS_SERVICE_SECRET_PREVIOUS: serviceSecret,
   // workos 产品地址（agent → workos 领域动作：创建/修改用户笔记与待办）。
-  WORKOS_INTERNAL_URL: z.string().url().default("https://i.zmzai.cloud"),
+  WORKOS_INTERNAL_URL: z.string().url().default("https://workos.zmzai.cloud"),
   GITHUB_OAUTH_CLIENT_ID: optionalString,
   GITHUB_OAUTH_CLIENT_SECRET: optionalString,
   // hindsight 长期记忆服务（HK 同机内网直连；未配 URL 或显式 false 时全链路 noop）。

@@ -4,14 +4,13 @@ import { NextRequest } from "next/server";
 const m = vi.hoisted(() => ({
   env: vi.fn(),
   listSessions: vi.fn(),
-  ownedSession: vi.fn(),
+
   workspaceFind: vi.fn(),
   runFind: vi.fn(),
 }));
 vi.mock("@/config/env", () => ({ getServerEnvironment: m.env }));
 vi.mock("@/lib/database/mongodb", () => ({ connectMongo: vi.fn() }));
-vi.mock("@/framework/core/runtime/runner", () => ({ defaultStore: { listSessions: m.listSessions } }));
-vi.mock("@/lib/workos-session-access", () => ({ getOwnedWorkosSession: m.ownedSession }));
+vi.mock("@/framework/core/session/mongo-models", () => ({ FrameworkSessionModel: { find: m.listSessions } }));
 vi.mock("@/models/workspace", () => ({ WorkspaceModel: { find: m.workspaceFind } }));
 vi.mock("@/models/run", () => ({ RunModel: { find: m.runFind } }));
 
@@ -20,16 +19,15 @@ const userId = "507f1f77bcf86cd799439011";
 function req(query = "", secret: string | null = "secret") {
   return new NextRequest(`http://localhost/api/test?userId=${userId}${query}`, { headers: secret === null ? {} : { authorization: `Bearer ${secret}` } });
 }
-const lean = (value: unknown) => ({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue(value) });
+const lean = (value: unknown) => ({ sort: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue(value) });
 
 beforeEach(() => {
   vi.resetAllMocks();
   m.env.mockReturnValue({ WORKOS_SERVICE_SECRET_CURRENT: "secret", WORKOS_SERVICE_SECRET_PREVIOUS: "previous" });
-  m.ownedSession.mockImplementation(async (sessionId: string) => ({ id: sessionId, userId, workspaceId: "ws_1" }));
-  m.listSessions.mockResolvedValue([
-    { id: "ses_new", userId, workspaceId: "ws_1", title: "新对话", time: { created: 2, updated: 2 } },
-    { id: "ses_old", userId, workspaceId: "ws_1", title: "旧对话", time: { created: 1, updated: 1 } },
-  ]);
+  m.listSessions.mockReturnValue(lean([
+    { sessionId: "ses_new", userId, workspaceId: "ws_1", title: "新对话", time: { created: 2, updated: "2026-10-11T00:00:00.000Z" } },
+    { sessionId: "ses_old", userId, workspaceId: "ws_1", title: "旧对话", time: { created: 1, updated: "2026-10-10T00:00:00.000Z" } },
+  ]));
   m.workspaceFind.mockReturnValue(lean([{ workspaceId: "ws_1", name: "默认空间" }]));
   m.runFind.mockReturnValue(lean([
     { runId: "run_a", sessionId: "ses_old", status: "succeeded", active: false, createdAt: new Date(1) },
@@ -62,13 +60,22 @@ it("lists recent sessions newest-first with latest run status and workspace name
     { sessionId: "ses_new", title: "新对话", workspaceId: "ws_1", workspaceName: "默认空间", updatedAt: expect.any(String), latestRun: { runId: "run_b", status: "running", active: true } },
     { sessionId: "ses_old", title: "旧对话", workspaceId: "ws_1", workspaceName: "默认空间", updatedAt: expect.any(String), latestRun: { runId: "run_a", status: "succeeded", active: false } },
   ]);
-  expect(m.listSessions).toHaveBeenCalledWith({ userId });
+  expect(m.listSessions).toHaveBeenCalledWith({ userId, workspaceId: { $in: ["ws_1"] } });
 });
 
-it("skips sessions the user does not own", async () => {
-  m.ownedSession.mockImplementation(async (sessionId: string) => (sessionId === "ses_new" ? { id: sessionId, userId } : null));
-  const response = await GET(req(""));
+it("filters by owned workspaces at the database boundary", async () => {
+  m.workspaceFind.mockReturnValue(lean([]));
+  m.listSessions.mockReturnValue(lean([]));
+  const body = await (await GET(req())).json();
+  expect(body.items).toHaveLength(0);
+  expect(m.listSessions).toHaveBeenCalledWith({ userId, workspaceId: { $in: [] } });
+});
+it("paginates stable exports and searches titles before limiting", async () => {
+  const response = await GET(req("&order=stable&limit=1&after=ses_before&q=a.b"));
   const body = await response.json();
-  expect(body.items).toHaveLength(1);
-  expect(body.items[0].sessionId).toBe("ses_new");
+  expect(body.nextCursor).toBe("ses_new");
+  expect(m.listSessions).toHaveBeenCalledWith(expect.objectContaining({ sessionId: { $gt: "ses_before" }, title: { $regex: "a\\.b", $options: "i" } }));
+});
+it("rejects cursor misuse", async () => {
+  expect((await GET(req("&after=ses_before"))).status).toBe(400);
 });

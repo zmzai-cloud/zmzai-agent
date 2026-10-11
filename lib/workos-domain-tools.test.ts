@@ -37,9 +37,9 @@ it("registers the five domain tools with creation free of approval", () => {
 });
 
 it("update tools map to an ask-class permission carrying the proposal args", () => {
-  const notePermission = workosUpdateNoteTool.permission!({ noteId: "note_1", markdown: "新正文" });
+  const notePermission = workosUpdateNoteTool.permission!({ noteId: "note_1", markdown: "新正文", expectedRevision: 4 });
   expect(notePermission).toMatchObject({ permission: "workos", patterns: ["update_note:note_1"] });
-  expect(notePermission!.metadata).toMatchObject({ action: "update_note", noteId: "note_1", markdown: "新正文" });
+  expect(notePermission!.metadata).toMatchObject({ action: "update_note", noteId: "note_1", markdown: "新正文", expectedRevision: 4 });
 
   const todoPermission = workosUpdateTodoTool.permission!({ todoId: "todo_1", status: "done" });
   expect(todoPermission).toMatchObject({ permission: "workos", patterns: ["update_todo:todo_1"] });
@@ -56,24 +56,26 @@ it("create_note posts an idempotent action and surfaces the noteId", async () =>
   expect(outcome.output).toContain("note_9");
 });
 
-it("update_note reads the current revision first and reuses it in the action", async () => {
+it("update_note dispatches the proposal revision without refreshing it after approval", async () => {
   const { calls } = stubFetch([
-    { body: { item: { noteId: "note_1", title: "旧", markdown: "旧正文", revision: 4 } } },
     { body: { ok: true, actionId: "act_2", replayed: false, result: { noteId: "note_1", revision: 5 } } },
   ]);
-  const outcome = await workosUpdateNoteTool.execute({ noteId: "note_1", markdown: "新正文" }, ctx as never);
-  expect(calls[0].url).toContain("/api/internal/agent/targets/note/note_1");
-  const body = JSON.parse(String(calls[1].init.body));
-  expect(body).toMatchObject({ type: "update_note", noteId: "note_1", markdown: "新正文", expectedRevision: 4 });
+  const outcome = await workosUpdateNoteTool.execute({ noteId: "note_1", markdown: "新正文", expectedRevision: 4 }, ctx as never);
+  expect(calls).toHaveLength(1);
+  expect(JSON.parse(String(calls[0].init.body))).toMatchObject({ type: "update_note", expectedRevision: 4 });
   expect(outcome.metadata).toMatchObject({ kind: "workos_note", noteId: "note_1", updated: true });
+  expect(workosUpdateNoteTool.permission!({ noteId: "note_1", markdown: "新正文", expectedRevision: 4 })?.metadata).toMatchObject({ expectedRevision: 4 });
 });
 
-it("surfaces a revision conflict as an actionable model-facing error", async () => {
-  stubFetch([
-    { body: { item: { noteId: "note_1", markdown: "x", revision: 4 } } },
-    { status: 409, body: { error: "REVISION_CONFLICT", current: { revision: 9 } } },
-  ]);
-  await expect(workosUpdateNoteTool.execute({ noteId: "note_1", markdown: "新正文" }, ctx as never)).rejects.toThrow("重新读取最新版本");
+it("rejects a proposal missing its original revision", () => {
+  expect(workosUpdateNoteTool.parameters.safeParse({ noteId: "note_1", markdown: "新正文" }).success).toBe(false);
+});
+
+it("surfaces edits made during approval as a conflict rather than overwriting them", async () => {
+  const { calls } = stubFetch([{ status: 409, body: { error: "REVISION_CONFLICT", current: { revision: 9 } } }]);
+  await expect(workosUpdateNoteTool.execute({ noteId: "note_1", markdown: "新正文", expectedRevision: 4 }, ctx as never)).rejects.toThrow("重新读取最新版本");
+  expect(calls).toHaveLength(1);
+  expect(JSON.parse(String(calls[0].init.body)).expectedRevision).toBe(4);
 });
 
 it("replayed actions are reported without re-creating anything", async () => {
@@ -83,11 +85,8 @@ it("replayed actions are reported without re-creating anything", async () => {
   expect(outcome.metadata).toMatchObject({ kind: "workos_todo", todoId: "todo_9", replayed: true });
 });
 
-it("falls back to a session-scoped key when no active run exists", async () => {
-  m.activeRun.mockResolvedValue(null);
-  const { calls } = stubFetch([{ body: { ok: true, actionId: "act_1", replayed: false, result: { todoId: "todo_1" } } }]);
-  await workosCreateTodoTool.execute({ title: "x", description: "", dueAt: null }, { ...ctx, toolCallId: undefined } as never);
-  const body = JSON.parse(String(calls[0].init.body));
-  expect(body.runId).toBe("session_ses_1");
-  expect(String(body.callId)).toContain("ses_1");
+it("refuses writes without a stable tool call identity", async () => {
+  const { calls } = stubFetch([{ body: { ok: true } }]);
+  await expect(workosCreateTodoTool.execute({ title: "x" }, { ...ctx, toolCallId: undefined } as never)).rejects.toThrow("稳定 toolCallId");
+  expect(calls).toHaveLength(0);
 });

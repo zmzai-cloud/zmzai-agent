@@ -70,7 +70,8 @@ async function readWorkosTarget(userId: string, kind: "note" | "todo", id: strin
 /** 工具执行时的运行身份：优先取会话当前活跃 Run，取不到时退回 sessionId 兜底键。 */
 async function actionIdentity(ctx: { sessionId: string; userId: string; workspaceId: string; toolCallId?: string }) {
   const runId = await activeRunIdForSession(ctx.sessionId).catch(() => null);
-  return { runId: runId ?? `session_${ctx.sessionId}`, callId: ctx.toolCallId ?? `call_${ctx.sessionId}_${Date.now()}` };
+  if (!ctx.toolCallId) throw new Error("缺少稳定 toolCallId，无法安全保存工作空间成果。请重新发起操作。");
+  return { runId: runId ?? `session_${ctx.sessionId}`, callId: ctx.toolCallId };
 }
 
 async function runAction(ctx: { sessionId: string; userId: string; workspaceId: string; toolCallId?: string }, action: Record<string, unknown> & { type: WorkosActionType }): Promise<ActionResponse> {
@@ -161,22 +162,21 @@ export const workosUpdateNoteTool: ToolDef = {
   label: "工作空间 · 改写笔记",
   description:
     "改写用户工作空间里已有的一篇笔记（传完整的新 Markdown 正文）。这会覆盖笔记内容，必须先征得用户确认后才会执行；" +
-    "改写前先用 workos_read_note 读取最新版本。未经用户要求不要调用。",
+    "改写前先用 workos_read_note 读取最新版本，将该版本的 revision 原样传入 expectedRevision；若冲突，重新读取并生成新提议。未经用户要求不要调用。",
   parameters: z.object({
     noteId: z.string().min(1).max(80),
+    expectedRevision: z.number().int().positive().describe("生成本次改写时读取的笔记 revision；不得用批准后的新版本替换"),
     title: z.string().min(1).max(240).optional().describe("新标题；不改标题可省略"),
     markdown: z.string().max(256 * 1024).describe("改写后的完整 Markdown 正文"),
   }),
   permission: (args) => ({
     permission: "workos",
     patterns: [`update_note:${args.noteId}`],
-    metadata: { action: "update_note", noteId: args.noteId, title: args.title ?? null, markdown: args.markdown },
+    metadata: { action: "update_note", noteId: args.noteId, title: args.title ?? null, markdown: args.markdown, expectedRevision: args.expectedRevision },
   }),
   executionMode: "sequential",
   async execute(args, ctx) {
-    const current = (await readWorkosTarget(ctx.userId, "note", args.noteId)) as { revision?: number } | null;
-    if (!current?.revision) throw new Error(`笔记 ${args.noteId} 不存在`);
-    const outcome = await runAction(ctx, { type: "update_note", noteId: args.noteId, markdown: args.markdown, ...(args.title !== undefined ? { title: args.title } : {}), expectedRevision: current.revision });
+    const outcome = await runAction(ctx, { type: "update_note", noteId: args.noteId, markdown: args.markdown, ...(args.title !== undefined ? { title: args.title } : {}), expectedRevision: args.expectedRevision });
     if (!outcome.ok) throw new Error(outcome.message ?? `改写笔记失败（${outcome.error}）`);
     return {
       title: `改写笔记 ${args.noteId}`,
