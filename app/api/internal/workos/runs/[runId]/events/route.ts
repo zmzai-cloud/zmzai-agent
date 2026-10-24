@@ -9,18 +9,28 @@ import { RunModel } from "@/models/run";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** 本次（最后一个）Run 的回放锚点：会话事件流里最后一条用户消息投影的 seq。
- *  WorkOS 前端断线重连需要「从本 Run 开头整段重放」（AI SDK Chat 的
- *  resumeStreamIsReplay 语义），而不是从中间 seq 续——续流面对已折叠的客户端
- *  状态无法对齐 text part。一个会话同一时刻只有一个活跃 Run，最后一条用户消息
- *  就是它的起点；resume 型 Run（不产生新用户消息）会多回放上一段，由订阅端
- *  按需裁剪，可接受。 */
-async function currentRunStartSeq(sessionId: string): Promise<number> {
-  const anchor = await FrameworkEventModel.findOne(
+/** 本次 Run 的回放锚点：本 Run 用户消息投影的 seq（AI SDK Chat 的
+ *  resumeStreamIsReplay 语义要求从 Run 开头整段重放，不能从中间续）。
+ *
+ *  【为什么必须按 run.createdAt 圈界】Run 文档创建于 runner.prompt() 之前，
+ *  本 Run 的用户消息投影必然 at >= createdAt；而「全局最后一条用户消息」在
+ *  POST /messages 返回与投影落库之间存在竞态——锚到上一轮会把上一轮的整个
+ *  回答重放进新消息（实测踩中）。resume 型 Run 没有新用户消息：短暂等待后
+ *  兜底取全局最后一条（正是该 Run 所属任务的起点）。 */
+async function currentRunStartSeq(sessionId: string, runCreatedAt: Date): Promise<number> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const bounded = await FrameworkEventModel.findOne(
+      { sessionId, type: "message.updated", "data.message.role": "user", at: { $gte: runCreatedAt } },
+      { seq: 1 },
+    ).sort({ seq: -1 }).lean();
+    if (bounded) return bounded.seq - 1;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  const last = await FrameworkEventModel.findOne(
     { sessionId, type: "message.updated", "data.message.role": "user" },
     { seq: 1 },
   ).sort({ seq: -1 }).lean();
-  return anchor ? anchor.seq - 1 : 0;
+  return last ? last.seq - 1 : 0;
 }
 
 export async function GET(request: NextRequest, context: { params: Promise<{ runId: string }> }) {
@@ -35,7 +45,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ run
   if (!run) return NextResponse.json({ error: "RUN_NOT_FOUND" }, { status: 404 });
   const session = await getOwnedWorkosSession(run.sessionId, userId);
   if (!session || session.workspaceId !== run.workspaceId) return NextResponse.json({ error: "RUN_NOT_FOUND" }, { status: 404 });
-  const sinceSeq = fromRunStart ? await currentRunStartSeq(session.id) : Number(rawSeq);
+  const sinceSeq = fromRunStart ? await currentRunStartSeq(session.id, run.createdAt) : Number(rawSeq);
   const encoder = new TextEncoder();
   const abort = new AbortController();
   const onAbort = () => abort.abort();

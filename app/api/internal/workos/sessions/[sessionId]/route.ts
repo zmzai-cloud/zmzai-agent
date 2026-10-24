@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ ses
   const messages = (await defaultStore.getMessages(sessionId)).map(({ info, parts }) => ({
     id: info.id, role: info.role, createdAt: info.time.created,
     text: parts.flatMap(part => part.type === "text" ? [part.text] : []).join(""),
-    parts: parts.flatMap(part => {
+    parts: parts.flatMap((part): Array<Record<string, unknown>> => {
       if (part.type === "text") return [{ type: "text" as const, id: part.id, text: part.text }];
       if (part.type === "tool") return [{ type: "tool" as const, id: part.id, callId: part.callId, tool: part.tool, state: { status: part.state.status, title: "title" in part.state ? part.state.title : undefined, error: "error" in part.state ? String(part.state.error).slice(0, 400) : undefined } }];
       if (part.type === "step-start") return [{ type: "step-start" as const, id: part.id }];
