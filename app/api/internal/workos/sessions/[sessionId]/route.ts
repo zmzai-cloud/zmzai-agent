@@ -26,8 +26,20 @@ export async function GET(request: NextRequest, context: { params: Promise<{ ses
   if (memory && (memory.retention.status === "pending" || memory.retention.status === "not_started")) {
     memory = await settleStaleRetention(memory.runId, new Date(), latestRun?.active === false ? latestRun.finishedAt ?? null : null);
   }
+  // parts 供 WorkOS 前端把历史折叠成与直播一致的富消息（text/tool 状态）。
+  // reasoning 不出详情接口（既有隐私边界，route.test 显式断言），直播侧适配器同样跳过。
+  // 工具 output 只带截断文本——详情接口走整页加载，全量工具产物不该出现在这里。
   const messages = (await defaultStore.getMessages(sessionId)).map(({ info, parts }) => ({
-    id: info.id, role: info.role, text: parts.flatMap(part => part.type === "text" ? [part.text] : []).join(""), createdAt: info.time.created,
+    id: info.id, role: info.role, createdAt: info.time.created,
+    text: parts.flatMap(part => part.type === "text" ? [part.text] : []).join(""),
+    parts: parts.flatMap(part => {
+      if (part.type === "text") return [{ type: "text" as const, id: part.id, text: part.text }];
+      if (part.type === "tool") return [{ type: "tool" as const, id: part.id, callId: part.callId, tool: part.tool, state: { status: part.state.status, title: "title" in part.state ? part.state.title : undefined, error: "error" in part.state ? String(part.state.error).slice(0, 400) : undefined } }];
+      if (part.type === "step-start") return [{ type: "step-start" as const, id: part.id }];
+      if (part.type === "step-finish") return [{ type: "step-finish" as const, id: part.id, tokens: part.tokens }];
+      if (part.type === "subtask") return [{ type: "subtask" as const, id: part.id, prompt: part.prompt, description: part.description, agent: part.agent, childSessionId: part.childSessionId }];
+      return [];
+    }),
   }));
   return NextResponse.json({ session, workspaceName: workspace.name, messages, latestRun, memory, memoryEnabled: isMemoryConfigured() }, { headers: { "cache-control": "no-store" } });
 }
