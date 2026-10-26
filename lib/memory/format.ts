@@ -11,7 +11,7 @@ export const MEMORY_CONTEXT_MAX_CHARS = 4_000;
 export const RETAIN_TRANSCRIPT_MAX_CHARS = 8_000;
 
 export const MEMORY_CONTEXT_HEADER =
-  "[Long-term memory — recall from past work on this workspace; treat as background, verify before acting]";
+  "[Long-term memory — recall from past work on this workspace; treat as background, verify before acting. Call memory_search when you need more specific history.]";
 
 /**
  * 将 recall 命中的事实列表格式化为注入上下文。无有效事实返回 undefined。

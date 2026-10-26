@@ -13,7 +13,7 @@
 
 import { HindsightClient } from "@vectorize-io/hindsight-client";
 
-export type MemoryRecallInput = { bankId: string; query: string; maxFacts?: number };
+export type MemoryRecallInput = { bankId: string; query: string; maxFacts?: number; timeoutMs?: number };
 export type MemoryRecallHit = { memoryId?: string; text: string; score?: number };
 export type MemoryRetainInput = { bankId: string; content: string; context: string };
 export type MemoryRetainOutcome = "succeeded" | "failed" | "unknown";
@@ -172,12 +172,13 @@ export function createHindsightMemoryProvider(deps: {
       ).then(() => undefined),
     retain: (input) => retainWithOutcome(input).then(() => undefined),
     retainWithOutcome,
-    recall: async ({ bankId, query, maxFacts }) => {
+    recall: async ({ bankId, query, maxFacts, timeoutMs }) => {
       const limit = maxFacts ?? RECALL_DEFAULT_MAX_FACTS;
+      const budget = timeoutMs !== undefined && timeoutMs > 0 ? Math.min(timeoutMs, 5_000) : RECALL_TIMEOUT_MS;
       const response = await withTimeout(
         bankId,
         "recall",
-        RECALL_TIMEOUT_MS,
+        budget,
         (signal) => getClient().recall(bankId, query, { maxTokens: RECALL_MAX_TOKENS, signal }),
         null,
       );
